@@ -3,6 +3,14 @@
   "displayName": "FastJudge",
   "description": "Lightning-fast local judge for compiling, running, and testing code across languages",
   "version": "0.0.1",
+  "author": {
+    "name": "Shrut Vanpariya",
+    "email": "shrutvanpariya@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shrut-vanpariya/fastjudge.git"
+  },
   "engines": {
     "vscode": "^1.108.1"
   },
