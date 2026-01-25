@@ -13,6 +13,7 @@ import {
 import { CompilerService } from './compiler-service';
 import { ExecutorService, executorService } from './executor-service';
 import { LanguageService, languageService } from './language-service';
+import { ResultStorageService } from '../storage/result-storage';
 
 /** Comparison modes for output matching */
 export type ComparisonMode = 'exact' | 'trim' | 'ignoreWhitespace';
@@ -21,10 +22,12 @@ export class JudgeService {
     private compiler: CompilerService;
     private executor: ExecutorService;
     private langService: LanguageService;
+    private resultStorage: ResultStorageService;
     private comparisonMode: ComparisonMode;
 
     constructor(
         outputDir: string,
+        workspaceRoot: string,
         comparisonMode: ComparisonMode = 'trim',
         executor?: ExecutorService,
         langService?: LanguageService
@@ -32,7 +35,31 @@ export class JudgeService {
         this.compiler = new CompilerService(outputDir);
         this.executor = executor || executorService;
         this.langService = langService || languageService;
+        this.resultStorage = new ResultStorageService(workspaceRoot);
         this.comparisonMode = comparisonMode;
+    }
+
+    /**
+     * Initialize services
+     */
+    async initialize(): Promise<void> {
+        await this.resultStorage.initialize();
+        // Run cleanup on startup
+        await this.resultStorage.cleanupOldResults();
+    }
+
+    /**
+     * Compile source file (for separate compile + execute workflow)
+     */
+    async compile(sourcePath: string): Promise<CompileResult> {
+        return this.compiler.compile(sourcePath);
+    }
+
+    /**
+     * Load all saved results for given test case IDs
+     */
+    async loadSavedResults(testCaseIds: string[]): Promise<Map<string, JudgeResult>> {
+        return this.resultStorage.loadAllResults(testCaseIds);
     }
 
     /**
@@ -84,6 +111,9 @@ export class JudgeService {
         testCase: TestCaseWithData,
         language?: string
     ): Promise<JudgeResult> {
+        // Delete previous results for this test case
+        await this.resultStorage.deleteResults(testCase.id);
+
         // Execute
         const execResult = await this.executor.execute(
             executablePath,
@@ -91,43 +121,72 @@ export class JudgeService {
             language as any
         );
 
+        // Save results to files
+        const { stdoutPath, stderrPath } = await this.resultStorage.saveResults(
+            testCase.id,
+            execResult.stdout,
+            execResult.stderr
+        );
+
+        // Get truncated output for UI
+        const truncatedStdout = this.resultStorage.truncateString(execResult.stdout);
+        const truncatedStderr = this.resultStorage.truncateString(execResult.stderr);
+
         // Check for TLE
         if (execResult.timedOut) {
-            return {
+            const tleResult: JudgeResult = {
                 testCaseId: testCase.id,
                 verdict: 'TLE',
                 executionTimeMs: execResult.executionTimeMs,
-                actualOutput: execResult.stdout,
+                actualOutput: truncatedStdout.text,
                 expectedOutput: testCase.expected,
+                stdoutPath,
+                stderrPath,
+                outputTruncated: truncatedStdout.truncated,
+                stderr: truncatedStderr.text,
             };
+            await this.resultStorage.saveJudgeResult(tleResult);
+            return tleResult;
         }
 
         // Check for runtime error
         if (execResult.exitCode !== 0) {
             const signal = this.executor.parseSignal(execResult.exitCode);
-            return {
+            const reResult: JudgeResult = {
                 testCaseId: testCase.id,
                 verdict: 'RE',
                 executionTimeMs: execResult.executionTimeMs,
-                actualOutput: execResult.stdout,
+                actualOutput: truncatedStdout.text,
                 expectedOutput: testCase.expected,
+                stdoutPath,
+                stderrPath,
+                outputTruncated: truncatedStdout.truncated || truncatedStderr.truncated,
                 runtimeErrorSubtype: this.mapSignalToSubtype(signal),
                 exitCode: execResult.exitCode,
                 signal,
+                stderr: truncatedStderr.text,
                 errorMessage: execResult.stderr || `Process exited with code ${execResult.exitCode}`,
             };
+            await this.resultStorage.saveJudgeResult(reResult);
+            return reResult;
         }
 
-        // Compare output
+        // Compare output (use full output for comparison, not truncated)
         const isCorrect = this.compareOutput(execResult.stdout, testCase.expected);
 
-        return {
+        const result: JudgeResult = {
             testCaseId: testCase.id,
             verdict: isCorrect ? 'AC' : 'WA',
             executionTimeMs: execResult.executionTimeMs,
-            actualOutput: execResult.stdout,
+            actualOutput: truncatedStdout.text,
             expectedOutput: testCase.expected,
+            stdoutPath,
+            stderrPath,
+            outputTruncated: truncatedStdout.truncated,
+            stderr: truncatedStderr.text,  // Include stderr for all verdicts
         };
+        await this.resultStorage.saveJudgeResult(result);
+        return result;
     }
 
     /**

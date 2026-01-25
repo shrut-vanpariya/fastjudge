@@ -63,6 +63,10 @@ export interface ExecutionResult {
     exitCode: number;
     executionTimeMs: number;
     timedOut: boolean;
+    // File storage for large outputs
+    stdoutPath?: string;
+    stderrPath?: string;
+    outputTruncated?: boolean;
 }
 
 /** Result of compilation */
@@ -81,14 +85,20 @@ export interface JudgeResult {
     executionTimeMs: number;
     memoryUsageKb?: number;  // v2 implementation
 
-    // Output comparison
+    // Output comparison (may be truncated for UI)
     actualOutput: string;
     expectedOutput: string;
+
+    // Full output file paths
+    stdoutPath?: string;
+    stderrPath?: string;
+    outputTruncated?: boolean;
 
     // For RE verdict
     runtimeErrorSubtype?: RuntimeErrorSubtype;
     exitCode?: number;
     signal?: string;
+    stderr?: string;  // Error output for debugging
 
     // For CE/IE
     errorMessage?: string;

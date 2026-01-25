@@ -43,7 +43,8 @@ suite('JudgeService Test Suite', () => {
 
     setup(() => {
         mockExecutor = new MockExecutorService();
-        judge = new JudgeService('.out', 'trim', mockExecutor);
+        // Use temp directory for test results
+        judge = new JudgeService('.out', '.', 'trim', mockExecutor);
     });
 
     // Verdict Tests

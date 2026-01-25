@@ -48,8 +48,82 @@ export class ExecutorService {
         inputPath: string,
         language?: Language
     ): Promise<ExecutionResult> {
-        const input = await fs.promises.readFile(inputPath, 'utf-8');
-        return this.runProcess(executablePath, input, language);
+        return this.runProcessWithStream(executablePath, inputPath, language);
+    }
+
+    /**
+     * Run the process with streaming input from file
+     */
+    private runProcessWithStream(
+        executablePath: string,
+        inputPath: string,
+        language?: Language
+    ): Promise<ExecutionResult> {
+        return new Promise((resolve) => {
+            const startTime = Date.now();
+            let timedOut = false;
+
+            // Build command based on language
+            const { command, args } = this.buildCommand(executablePath, language);
+
+            const proc = spawn(command, args, {
+                cwd: path.dirname(executablePath),
+                shell: true,
+                stdio: ['pipe', 'pipe', 'pipe'],
+            });
+
+            let stdout = '';
+            let stderr = '';
+
+            // Capture stdout
+            proc.stdout?.on('data', (data) => {
+                stdout += data.toString();
+            });
+
+            // Capture stderr
+            proc.stderr?.on('data', (data) => {
+                stderr += data.toString();
+            });
+
+            // Set up time limit
+            const timer = setTimeout(() => {
+                timedOut = true;
+                this.killProcess(proc);
+            }, this.timeLimitMs);
+
+            // Handle process completion
+            proc.on('exit', (code) => {
+                clearTimeout(timer);
+                const executionTimeMs = Date.now() - startTime;
+
+                resolve({
+                    stdout,
+                    stderr,
+                    exitCode: code ?? -1,
+                    executionTimeMs,
+                    timedOut,
+                });
+            });
+
+            // Handle spawn errors
+            proc.on('error', (err) => {
+                clearTimeout(timer);
+                resolve({
+                    stdout: '',
+                    stderr: `Execution error: ${err.message}`,
+                    exitCode: -1,
+                    executionTimeMs: Date.now() - startTime,
+                    timedOut: false,
+                });
+            });
+
+            // Stream input from file instead of loading to memory
+            const inputStream = fs.createReadStream(inputPath);
+            inputStream.pipe(proc.stdin!);
+            inputStream.on('error', () => {
+                proc.stdin?.end();
+            });
+        });
     }
 
     /**

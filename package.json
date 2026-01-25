@@ -89,6 +89,21 @@
           "type": "string",
           "default": "python",
           "description": "Python interpreter command"
+        },
+        "fastjudge.executionMode": {
+          "type": "string",
+          "enum": [
+            "sequential",
+            "sequential-live",
+            "parallel"
+          ],
+          "enumDescriptions": [
+            "Run tests one at a time, update UI after all complete (fastest for simple tests)",
+            "Run tests one at a time, update UI after each test (recommended)",
+            "Run all tests concurrently, update UI as each finishes (fastest for slow tests)"
+          ],
+          "default": "sequential-live",
+          "description": "Test execution mode"
         }
       }
     },
@@ -104,20 +119,28 @@
   },
   "scripts": {
     "vscode:prepublish": "pnpm run compile",
-    "compile": "tsc -p ./",
+    "compile": "tsc -p ./ && node esbuild.js --production",
+    "compile:extension": "tsc -p ./",
+    "compile:webview": "node esbuild.js",
     "watch": "tsc -watch -p ./",
+    "watch:webview": "node esbuild.js --watch",
     "pretest": "pnpm run compile && pnpm run lint",
-    "lint": "eslint src",
+    "lint": "eslint src --ignore-pattern 'src/ui/webview/app/**'",
     "test": "vscode-test"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
+    "@types/react": "^19.2.9",
+    "@types/react-dom": "^19.2.3",
     "@types/vscode": "^1.108.1",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.27.2",
     "eslint": "^9.39.2",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.52.0"
+    "typescript-eslint": "^8.52.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   }
 }
