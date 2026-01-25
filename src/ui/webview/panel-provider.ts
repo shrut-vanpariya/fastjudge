@@ -8,7 +8,7 @@ import * as path from 'path';
 import { TestCaseManager } from '../../storage/testcase-manager';
 import { JudgeService } from '../../core/judge-service';
 import { JudgeResult, TestCaseWithData, Verdict } from '../../types';
-import { getTimeLimitMs, getComparisonMode, getExecutionMode } from '../../config/settings';
+import { getTimeLimitMs, getComparisonMode, getExecutionMode, detectLanguage, getSupportedExtensions } from '../../config/settings';
 
 export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'fastjudge.panel';
@@ -294,6 +294,16 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
     }
 
     const filePath = activeEditor.document.uri.fsPath;
+
+    // Validate file extension
+    if (!detectLanguage(filePath)) {
+      const extensions = getSupportedExtensions()
+        .map(ext => ext.replace('.', ''))
+        .join(', ');
+      vscode.window.showErrorMessage(`Unsupported file extension. Only these types are valid: ${extensions}`);
+      return;
+    }
+
     await this._testCaseManager.addTestCase(filePath, input, expected, name);
     await this.refresh();
   }
