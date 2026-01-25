@@ -200,7 +200,9 @@ export class ResultStorageService {
             const entries = await fs.promises.readdir(this.resultsDir, { withFileTypes: true });
 
             for (const entry of entries) {
-                if (!entry.isDirectory()) continue;
+                if (!entry.isDirectory()) {
+                    continue;
+                }
 
                 const dirPath = path.join(this.resultsDir, entry.name);
                 const stats = await fs.promises.stat(dirPath);
@@ -222,7 +224,11 @@ export class ResultStorageService {
  * Format bytes to human-readable string
  */
 function formatBytes(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024) {
+        return `${bytes} B`;
+    }
+    if (bytes < 1024 * 1024) {
+        return `${(bytes / 1024).toFixed(1)} KB`;
+    }
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
