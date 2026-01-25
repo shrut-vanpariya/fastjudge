@@ -4,8 +4,7 @@
  */
 
 import * as vscode from 'vscode';
-import { Language, LanguageConfig, ExecutionMode } from '../types';
-import { ComparisonMode } from '../core/judge-service';
+import { Language, LanguageConfig, ExecutionMode, ComparisonMode } from '../types';
 
 // Extension to Language mapping (this is metadata, not settings)
 export const EXTENSION_TO_LANGUAGE: Record<string, Language> = {

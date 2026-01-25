@@ -12,6 +12,9 @@ export type TestCaseId = string;
 /** Supported programming languages */
 export type Language = 'cpp' | 'python' | 'java' | 'javascript';
 
+/** Comparison modes for output matching */
+export type ComparisonMode = 'exact' | 'trim' | 'ignoreWhitespace';
+
 // ============================================================================
 // Verdicts
 // ============================================================================

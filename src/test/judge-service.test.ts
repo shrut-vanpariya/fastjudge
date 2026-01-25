@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { JudgeService, ComparisonMode } from '../core/judge-service';
+import { JudgeService } from '../core/judge-service';
 import { ExecutorService } from '../core/executor-service';
 import { ExecutionResult, TestCaseWithData } from '../types';
 

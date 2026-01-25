@@ -8,15 +8,13 @@ import {
     JudgeResult,
     TestCaseWithData,
     RuntimeErrorSubtype,
-    CompileResult
+    CompileResult,
+    ComparisonMode
 } from '../types';
 import { CompilerService } from './compiler-service';
 import { ExecutorService, executorService } from './executor-service';
 import { LanguageService, languageService } from './language-service';
 import { ResultStorageService } from '../storage/result-storage';
-
-/** Comparison modes for output matching */
-export type ComparisonMode = 'exact' | 'trim' | 'ignoreWhitespace';
 
 export class JudgeService {
     private compiler: CompilerService;
