@@ -1,26 +1,93 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
+/**
+ * FastJudge Extension Entry Point
+ */
+
 import * as vscode from 'vscode';
+import * as path from 'path';
+import { FastJudgeViewProvider } from './ui/webview/panel-provider';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+let panelProvider: FastJudgeViewProvider | undefined;
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "fastjudge" is now active!');
+export async function activate(context: vscode.ExtensionContext) {
+	console.log('FastJudge is now active!');
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('fastjudge.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from FastJudge!');
-	});
+	// Get workspace root
+	const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+	if (!workspaceRoot) {
+		console.log('No workspace folder found');
+		return;
+	}
 
-	context.subscriptions.push(disposable);
+	// Create and register the webview provider
+	panelProvider = new FastJudgeViewProvider(context.extensionUri, workspaceRoot);
+	await panelProvider.initialize();
+
+	context.subscriptions.push(
+		vscode.window.registerWebviewViewProvider(
+			FastJudgeViewProvider.viewType,
+			panelProvider
+		)
+	);
+
+	// Register commands
+	context.subscriptions.push(
+		vscode.commands.registerCommand('fastjudge.openPanel', () => {
+			vscode.commands.executeCommand('workbench.view.extension.fastjudge');
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('fastjudge.runAll', async () => {
+			if (panelProvider) {
+				await panelProvider.runAllTests();
+			}
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('fastjudge.addTestCase', async () => {
+			// Quick input for adding test case via command
+			const input = await vscode.window.showInputBox({
+				prompt: 'Enter test input (or press Enter to open panel)',
+				placeHolder: 'Test input...',
+			});
+
+			if (input === undefined) {
+				return; // Cancelled
+			}
+
+			if (input === '') {
+				// Open panel for full form
+				vscode.commands.executeCommand('workbench.view.extension.fastjudge');
+				return;
+			}
+
+			const expected = await vscode.window.showInputBox({
+				prompt: 'Enter expected output',
+				placeHolder: 'Expected output...',
+			});
+
+			if (expected === undefined) {
+				return; // Cancelled
+			}
+
+			if (panelProvider) {
+				await panelProvider.addTestCase(input, expected);
+			}
+		})
+	);
+
+	// Listen for configuration changes
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration((e) => {
+			if (e.affectsConfiguration('fastjudge')) {
+				// Apply new configuration
+				// (Could update time limits, comparison mode, etc.)
+			}
+		})
+	);
 }
 
-// This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+	console.log('FastJudge is deactivated');
+}
