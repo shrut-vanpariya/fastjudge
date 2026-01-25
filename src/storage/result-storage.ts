@@ -10,9 +10,6 @@ import { JudgeResult } from '../types';
 /** Maximum bytes to show in UI (first 5KB + last 5KB) */
 const TRUNCATE_LIMIT = 5 * 1024;
 
-/** Age limit for auto-cleanup (7 days in ms) */
-const CLEANUP_AGE_MS = 7 * 24 * 60 * 60 * 1000;
-
 export interface TruncatedOutput {
     content: string;
     truncated: boolean;
@@ -191,11 +188,13 @@ export class ResultStorageService {
     }
 
     /**
-     * Clean up old results (older than 7 days)
+     * Clean up old results (older than specified days)
+     * @param retentionDays Days to keep results (default 7)
      */
-    async cleanupOldResults(): Promise<number> {
+    async cleanupOldResults(retentionDays: number = 7): Promise<number> {
         let deletedCount = 0;
         const now = Date.now();
+        const maxAgeMs = retentionDays * 24 * 60 * 60 * 1000;
 
         try {
             const entries = await fs.promises.readdir(this.resultsDir, { withFileTypes: true });
@@ -206,7 +205,7 @@ export class ResultStorageService {
                 const dirPath = path.join(this.resultsDir, entry.name);
                 const stats = await fs.promises.stat(dirPath);
 
-                if (now - stats.mtimeMs > CLEANUP_AGE_MS) {
+                if (now - stats.mtimeMs > maxAgeMs) {
                     await fs.promises.rm(dirPath, { recursive: true, force: true });
                     deletedCount++;
                 }

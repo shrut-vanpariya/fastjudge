@@ -64,41 +64,29 @@
     "configuration": {
       "title": "FastJudge",
       "properties": {
-        "fastjudge.timeLimitMs": {
+        "fastjudge.general.timeLimitMs": {
           "type": "number",
           "default": 2000,
+          "minimum": 100,
+          "maximum": 60000,
           "description": "Time limit for code execution in milliseconds"
         },
-        "fastjudge.comparisonMode": {
+        "fastjudge.general.comparisonMode": {
           "type": "string",
           "enum": [
             "exact",
             "trim",
             "ignoreWhitespace"
           ],
+          "enumDescriptions": [
+            "Exact character-by-character match",
+            "Ignore trailing whitespace on each line (recommended)",
+            "Collapse all whitespace to single spaces"
+          ],
           "default": "trim",
           "description": "Output comparison mode"
         },
-        "fastjudge.cpp.command": {
-          "type": "string",
-          "default": "g++",
-          "description": "C++ compiler command"
-        },
-        "fastjudge.cpp.args": {
-          "type": "array",
-          "default": [
-            "-O2",
-            "-std=c++17",
-            "-Wall"
-          ],
-          "description": "C++ compiler arguments"
-        },
-        "fastjudge.python.command": {
-          "type": "string",
-          "default": "python",
-          "description": "Python interpreter command"
-        },
-        "fastjudge.executionMode": {
+        "fastjudge.general.executionMode": {
           "type": "string",
           "enum": [
             "sequential",
@@ -112,6 +100,50 @@
           ],
           "default": "sequential-live",
           "description": "Test execution mode"
+        },
+        "fastjudge.general.resultRetentionDays": {
+          "type": "number",
+          "default": 7,
+          "minimum": 1,
+          "maximum": 30,
+          "description": "Days to keep test results before auto-cleanup"
+        },
+        "fastjudge.language.cpp.command": {
+          "type": "string",
+          "default": "g++",
+          "description": "C++ compiler command"
+        },
+        "fastjudge.language.cpp.args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "-O2",
+            "-std=c++17",
+            "-Wall"
+          ],
+          "description": "C++ compiler arguments"
+        },
+        "fastjudge.language.python.command": {
+          "type": "string",
+          "default": "python",
+          "description": "Python interpreter command"
+        },
+        "fastjudge.language.java.command": {
+          "type": "string",
+          "default": "javac",
+          "description": "Java compiler command"
+        },
+        "fastjudge.language.java.runCommand": {
+          "type": "string",
+          "default": "java",
+          "description": "Java runtime command"
+        },
+        "fastjudge.language.javascript.command": {
+          "type": "string",
+          "default": "node",
+          "description": "Node.js command for JavaScript"
         }
       }
     },
@@ -134,7 +166,8 @@
     "watch:webview": "node esbuild.js --watch",
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src --ignore-pattern 'src/ui/webview/app/**'",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "package": "vsce package"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

@@ -6,13 +6,12 @@
 import * as path from 'path';
 import { Language, LanguageConfig } from '../types';
 import {
-    LANGUAGE_CONFIGS,
     EXTENSION_TO_LANGUAGE,
     detectLanguage as detectLang,
     getLanguageConfig as getLangConfig,
     requiresCompilation,
     getSupportedExtensions
-} from '../config/languages';
+} from '../config/settings';
 
 export class LanguageService {
     /**

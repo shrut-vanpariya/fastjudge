@@ -56,6 +56,9 @@ export interface TestCaseWithData extends TestCase {
 // Execution
 // ============================================================================
 
+/** Test execution mode */
+export type ExecutionMode = 'sequential' | 'sequential-live' | 'parallel';
+
 /** Result of code execution */
 export interface ExecutionResult {
     stdout: string;

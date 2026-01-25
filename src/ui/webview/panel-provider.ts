@@ -8,6 +8,7 @@ import * as path from 'path';
 import { TestCaseManager } from '../../storage/testcase-manager';
 import { JudgeService } from '../../core/judge-service';
 import { JudgeResult, TestCaseWithData, Verdict } from '../../types';
+import { getTimeLimitMs, getComparisonMode, getExecutionMode } from '../../config/settings';
 
 export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'fastjudge.panel';
@@ -29,6 +30,14 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
   public async initialize(): Promise<void> {
     await this._testCaseManager.initialize();
     await this._judgeService.initialize();
+  }
+
+  /**
+   * Apply current settings to services before running tests
+   */
+  private applySettings(): void {
+    this._judgeService.setComparisonMode(getComparisonMode());
+    this._judgeService.setTimeLimit(getTimeLimitMs());
   }
 
   public resolveWebviewView(
@@ -141,6 +150,9 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
    * Run all test cases for the active file
    */
   public async runAllTests(): Promise<void> {
+    // Apply current settings before running
+    this.applySettings();
+
     const activeEditor = vscode.window.activeTextEditor;
     if (!activeEditor) {
       vscode.window.showErrorMessage('No active file');
@@ -187,7 +199,7 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
     }
 
     // Get execution mode from settings
-    const executionMode = vscode.workspace.getConfiguration('fastjudge').get<string>('executionMode', 'sequential-live');
+    const executionMode = getExecutionMode();
 
     const results: JudgeResult[] = [];
 
@@ -237,6 +249,9 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
    * Run a single test case
    */
   public async runSingleTest(testCaseId: string): Promise<void> {
+    // Apply current settings before running
+    this.applySettings();
+
     const activeEditor = vscode.window.activeTextEditor;
     if (!activeEditor) {
       return;
