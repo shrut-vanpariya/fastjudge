@@ -44,7 +44,7 @@ export function TestCard({ testCase, index, onRun, onDelete, onUpdate, isExpande
     const result = testCase.result;
     const verdict = result?.verdict || 'PENDING';
     const time = result?.executionTimeMs && result.executionTimeMs > 0
-        ? `${result.executionTimeMs}ms`
+        ? `${Math.round(result.executionTimeMs)}ms`
         : '';
     const displayName = name || `Test ${index + 1}`;
 

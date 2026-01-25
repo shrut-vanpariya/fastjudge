@@ -6,6 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawn, ChildProcess } from 'child_process';
+import { performance } from 'perf_hooks';
 import { ExecutionResult, Language } from '../types';
 import { LanguageService, languageService } from './language-service';
 
@@ -60,8 +61,10 @@ export class ExecutorService {
         language?: Language
     ): Promise<ExecutionResult> {
         return new Promise((resolve) => {
-            const startTime = Date.now();
+            const startTime = performance.now();
+            let executionTimeMs = 0;
             let timedOut = false;
+            let exitCode = -1;
 
             // Build command based on language
             const { command, args } = this.buildCommand(executablePath, language);
@@ -91,15 +94,25 @@ export class ExecutorService {
                 this.killProcess(proc);
             }, this.timeLimitMs);
 
-            // Handle process completion
+            // Handle process exit (stop timer here)
             proc.on('exit', (code) => {
+                executionTimeMs = performance.now() - startTime;
+                exitCode = code ?? -1;
+            });
+
+            // Handle stream close (resolve here to ensure we have all output)
+            proc.on('close', () => {
                 clearTimeout(timer);
-                const executionTimeMs = Date.now() - startTime;
+
+                // Fallback if exit didn't fire (rare but possible with force kill)
+                if (executionTimeMs === 0) {
+                    executionTimeMs = performance.now() - startTime;
+                }
 
                 resolve({
                     stdout,
                     stderr,
-                    exitCode: code ?? -1,
+                    exitCode,
                     executionTimeMs,
                     timedOut,
                 });
@@ -112,7 +125,7 @@ export class ExecutorService {
                     stdout: '',
                     stderr: `Execution error: ${err.message}`,
                     exitCode: -1,
-                    executionTimeMs: Date.now() - startTime,
+                    executionTimeMs: performance.now() - startTime,
                     timedOut: false,
                 });
             });
@@ -135,9 +148,11 @@ export class ExecutorService {
         language?: Language
     ): Promise<ExecutionResult> {
         return new Promise((resolve) => {
-            const startTime = Date.now();
+            const startTime = performance.now();
+            let executionTimeMs = 0;
             let timedOut = false;
             let killed = false;
+            let exitCode = -1;
 
             // Build command based on language
             const { command, args } = this.buildCommand(executablePath, language);
@@ -168,15 +183,24 @@ export class ExecutorService {
                 this.killProcess(proc);
             }, this.timeLimitMs);
 
-            // Handle process completion
-            proc.on('close', (code, signal) => {
+            // Handle process exit (stop timer here)
+            proc.on('exit', (code) => {
+                executionTimeMs = performance.now() - startTime;
+                exitCode = code ?? -1;
+            });
+
+            // Handle stream close (resolve here)
+            proc.on('close', () => {
                 clearTimeout(timer);
-                const executionTimeMs = Date.now() - startTime;
+
+                if (executionTimeMs === 0) {
+                    executionTimeMs = performance.now() - startTime;
+                }
 
                 resolve({
                     stdout,
                     stderr,
-                    exitCode: code ?? -1,
+                    exitCode,
                     executionTimeMs,
                     timedOut,
                 });
@@ -189,7 +213,7 @@ export class ExecutorService {
                     stdout: '',
                     stderr: `Execution error: ${err.message}`,
                     exitCode: -1,
-                    executionTimeMs: Date.now() - startTime,
+                    executionTimeMs: performance.now() - startTime,
                     timedOut: false,
                 });
             });
