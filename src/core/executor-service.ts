@@ -71,8 +71,9 @@ export class ExecutorService {
 
             const proc = spawn(command, args, {
                 cwd: path.dirname(executablePath),
-                shell: true,
+                shell: false,
                 stdio: ['pipe', 'pipe', 'pipe'],
+                timeout: this.timeLimitMs,
             });
 
             let stdout = '';
@@ -159,8 +160,9 @@ export class ExecutorService {
 
             const proc = spawn(command, args, {
                 cwd: path.dirname(executablePath),
-                shell: true,
+                shell: false,
                 stdio: ['pipe', 'pipe', 'pipe'],
+                timeout: this.timeLimitMs,
             });
 
             let stdout = '';
