@@ -1,71 +1,232 @@
-/* Global Styles */
+/* FastJudge Design System - Matching Mockup */
+
+/* =============================================
+   DESIGN TOKENS
+   ============================================= */
 
 :root {
-  --vscode-font-family: var(--vscode-editor-font-family, monospace);
+  /* Verdict Colors */
+  --fj-color-ac: #22c55e;
+  --fj-color-ac-bg: rgba(34, 197, 94, 0.1);
+  --fj-color-ac-border: rgba(34, 197, 94, 0.4);
+  
+  --fj-color-wa: #ef4444;
+  --fj-color-wa-bg: rgba(239, 68, 68, 0.1);
+  --fj-color-wa-border: rgba(239, 68, 68, 0.4);
+  
+  --fj-color-tle: #eab308;
+  --fj-color-tle-bg: rgba(234, 179, 8, 0.1);
+  --fj-color-tle-border: rgba(234, 179, 8, 0.4);
+  
+  --fj-color-re: #a855f7;
+  --fj-color-re-bg: rgba(168, 85, 247, 0.1);
+  --fj-color-re-border: rgba(168, 85, 247, 0.4);
+  
+  --fj-color-ce: #78716c;
+  --fj-color-ce-bg: rgba(120, 113, 108, 0.1);
+  --fj-color-ce-border: rgba(120, 113, 108, 0.4);
+  
+  --fj-color-ie: #f97316;
+  --fj-color-ie-bg: rgba(249, 115, 22, 0.1);
+  --fj-color-ie-border: rgba(249, 115, 22, 0.4);
+  
+  --fj-color-running: #3b82f6;
+  --fj-color-running-bg: rgba(59, 130, 246, 0.1);
+  --fj-color-running-border: rgba(59, 130, 246, 0.4);
+  
+  --fj-color-pending: #6b7280;
+  --fj-color-pending-bg: rgba(107, 114, 128, 0.05);
+  --fj-color-pending-border: rgba(107, 114, 128, 0.3);
+
+  /* Typography */
+  --fj-font-mono: var(--vscode-editor-font-family, 'Consolas', 'Monaco', monospace);
+  --fj-font-size-xs: 10px;
+  --fj-font-size-sm: 11px;
+  --fj-font-size-base: 12px;
+  --fj-font-size-md: 13px;
+
+  /* Spacing */
+  --fj-space-1: 4px;
+  --fj-space-2: 8px;
+  --fj-space-3: 12px;
+  --fj-space-4: 16px;
+
+  /* Border Radius */
+  --fj-radius-sm: 4px;
+  --fj-radius-md: 6px;
+  --fj-radius-full: 9999px;
+
+  /* Transitions */
+  --fj-transition-fast: 150ms ease;
+  --fj-transition-base: 200ms ease;
 }
+
+/* =============================================
+   BASE STYLES
+   ============================================= */
 
 * {
   box-sizing: border-box;
 }
 
 body {
-  font-family: var(--vscode-font-family);
-  padding: 10px;
+  font-family: var(--fj-font-mono);
+  font-size: var(--fj-font-size-base);
+  padding: 0;
   margin: 0;
   color: var(--vscode-foreground);
   background: var(--vscode-sideBar-background);
 }
 
 .app {
-  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
 }
+
+/* =============================================
+   HEADER
+   ============================================= */
 
 .header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
+  justify-content: space-between;
+  padding: var(--fj-space-2) var(--fj-space-3);
   border-bottom: 1px solid var(--vscode-panel-border);
+  flex-shrink: 0;
 }
 
-.header h2 {
+.file-name {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fj-font-size-md);
   font-weight: 600;
+  color: var(--vscode-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 
-.toolbar {
+.pass-count {
+  font-size: var(--fj-font-size-sm);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--fj-radius-full);
+  flex-shrink: 0;
+  margin-left: var(--fj-space-2);
+}
+
+.pass-count.all-passed {
+  background: var(--fj-color-ac);
+  color: #fff;
+}
+
+.pass-count.some-failed {
+  background: var(--fj-color-wa);
+  color: #fff;
+}
+
+/* =============================================
+   TEST CASES CONTAINER (Scrollable)
+   ============================================= */
+
+.test-cases {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--fj-space-2) var(--fj-space-3);
   display: flex;
-  gap: 8px;
-}
-
-.btn {
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  border: none;
-  padding: 6px 12px;
-  cursor: pointer;
-  border-radius: 3px;
-  font-size: 12px;
-  font-family: inherit;
-}
-
-.btn:hover {
-  background: var(--vscode-button-hoverBackground);
-}
-
-.btn-secondary {
-  background: var(--vscode-button-secondaryBackground);
-  color: var(--vscode-button-secondaryForeground);
-}
-
-.btn-secondary:hover {
-  background: var(--vscode-button-secondaryHoverBackground);
+  flex-direction: column;
+  gap: var(--fj-space-2);
+  min-height: 0;
 }
 
 .no-tests {
   text-align: center;
-  padding: 30px;
+  padding: var(--fj-space-4);
   color: var(--vscode-descriptionForeground);
+  font-size: var(--fj-font-size-sm);
+}
+
+/* =============================================
+   BOTTOM TOOLBAR (Like Mockup)
+   ============================================= */
+
+.bottom-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--fj-space-2);
+  padding: var(--fj-space-2) var(--fj-space-3);
+  border-top: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-sideBar-background);
+  flex-shrink: 0;
+}
+
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fj-space-1);
+  padding: var(--fj-space-1) var(--fj-space-3);
+  height: 28px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: var(--fj-radius-sm);
+  font-family: inherit;
+  font-size: var(--fj-font-size-sm);
+  cursor: pointer;
+  transition: all var(--fj-transition-fast);
+}
+
+.toolbar-btn:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.toolbar-btn svg {
+  flex-shrink: 0;
+}
+
+.toolbar-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  color: var(--vscode-foreground);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: var(--fj-radius-sm);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: all var(--fj-transition-fast);
+}
+
+.toolbar-btn-icon:hover {
+  opacity: 1;
+  background: var(--vscode-list-hoverBackground);
+}
+
+/* =============================================
+   ANIMATIONS
+   ============================================= */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn var(--fj-transition-base);
 }

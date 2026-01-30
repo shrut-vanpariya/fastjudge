@@ -57,6 +57,10 @@ export function useVSCode(onMessage: (message: ExtensionMessage) => void) {
         postMessage({ type: 'openFile', filePath });
     }, [postMessage]);
 
+    const viewDiff = useCallback((testCaseId: string) => {
+        postMessage({ type: 'viewDiff', testCaseId });
+    }, [postMessage]);
+
     return {
         runAll,
         runSingle,
@@ -65,6 +69,7 @@ export function useVSCode(onMessage: (message: ExtensionMessage) => void) {
         updateTestCase,
         refresh,
         openFile,
+        viewDiff,
         postMessage,
     };
 }

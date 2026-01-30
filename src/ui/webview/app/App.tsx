@@ -2,20 +2,33 @@
  * FastJudge React App
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { TestCard } from './components/TestCard';
 import { useVSCode } from './hooks/useVSCode';
-import { TestCaseWithResult, ExtensionMessage } from './types';
+import { TestCaseWithResult, ExtensionMessage, Verdict } from './types';
+import { PlayIcon, PlusIcon, ChevronDownIcon, ChevronRightIcon } from './components/Icons';
 import './styles.css';
+
+// Verdicts that should auto-expand
+const ERROR_VERDICTS: Verdict[] = ['WA', 'RE', 'TLE', 'CE', 'IE'];
 
 export function App() {
     const [filePath, setFilePath] = useState<string>('FastJudge');
     const [testCases, setTestCases] = useState<TestCaseWithResult[]>([]);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-    // Track previous state to detect additions vs file switches
     const prevTestCasesRef = useRef<TestCaseWithResult[]>([]);
     const prevFilePathRef = useRef<string>('');
+
+    // Calculate pass count from test cases (derived state)
+    const { passedCount, totalCount, hasResults } = useMemo(() => {
+        const total = testCases.length;
+        const passed = testCases.filter(tc => tc.result?.verdict === 'AC').length;
+        const hasAnyResult = testCases.some(tc =>
+            tc.result?.verdict && tc.result.verdict !== 'PENDING' && tc.result.verdict !== 'RUNNING'
+        );
+        return { passedCount: passed, totalCount: total, hasResults: hasAnyResult };
+    }, [testCases]);
 
     const handleMessage = useCallback((message: ExtensionMessage) => {
         switch (message.type) {
@@ -23,19 +36,35 @@ export function App() {
                 const isSameFile = message.filePath === prevFilePathRef.current;
 
                 if (isSameFile) {
-                    // Same file - detect NEW test cases and expand them
-                    const oldIds = new Set(prevTestCasesRef.current.map(t => t.id));
+                    const oldCases = prevTestCasesRef.current;
+                    const oldIds = new Set(oldCases.map(t => t.id));
+
                     const addedIds = message.testCases
                         .filter(t => !oldIds.has(t.id))
                         .map(t => t.id);
 
-                    if (addedIds.length > 0) {
-                        setExpandedIds(prev => {
-                            const next = new Set(prev);
-                            addedIds.forEach(id => next.add(id));
-                            return next;
-                        });
-                    }
+                    setExpandedIds(prev => {
+                        const next = new Set(prev);
+
+                        for (const tc of message.testCases) {
+                            const oldTc = oldCases.find(o => o.id === tc.id);
+                            const oldVerdict = oldTc?.result?.verdict;
+                            const newVerdict = tc.result?.verdict;
+
+                            // Auto-collapse on running
+                            if (newVerdict === 'RUNNING' && oldVerdict !== 'RUNNING') {
+                                next.delete(tc.id);
+                            }
+
+                            // Auto-expand on error
+                            if (oldVerdict === 'RUNNING' && newVerdict && ERROR_VERDICTS.includes(newVerdict)) {
+                                next.add(tc.id);
+                            }
+                        }
+
+                        addedIds.forEach(id => next.add(id));
+                        return next;
+                    });
                 } else {
                     // Different file - reset expanded state
                     setExpandedIds(new Set());
@@ -63,10 +92,10 @@ export function App() {
         deleteTestCase,
         updateTestCase,
         refresh,
-        openFile
+        openFile,
+        viewDiff
     } = useVSCode(handleMessage);
 
-    // Request initial data on mount
     useEffect(() => {
         refresh();
     }, [refresh]);
@@ -98,33 +127,26 @@ export function App() {
     };
 
     const allExpanded = testCases.length > 0 && expandedIds.size === testCases.length;
+    const allPassed = hasResults && passedCount === totalCount;
 
     return (
         <div className="app">
+            {/* Header with filename and pass count */}
             <div className="header">
-                <h2>{filePath}</h2>
-                <div className="toolbar">
-                    <button className="btn" onClick={runAll} title="Run All Tests">
-                        ▶ Run All
-                    </button>
-                    <button className="btn" onClick={toggleAll} title={allExpanded ? "Collapse All" : "Expand All"}>
-                        {allExpanded ? "🔽" : "▶️"}
-                    </button>
-                    <button
-                        className="btn btn-secondary"
-                        onClick={handleAdd}
-                        title="Add Test Case"
-                    >
-                        + Add
-                    </button>
-                </div>
+                <h2 className="file-name">{filePath}</h2>
+                {totalCount > 0 && (
+                    <span className={`pass-count ${allPassed ? 'all-passed' : hasResults ? 'some-failed' : ''}`}>
+                        {passedCount}/{totalCount}
+                    </span>
+                )}
             </div>
 
+            {/* Scrollable Test Cases List */}
             <div className="test-cases">
                 {testCases.length === 0 ? (
                     <div className="no-tests">
                         No test cases yet.<br />
-                        Click "+ Add" to create one.
+                        Click "+ Add Test Case" below to create one.
                     </div>
                 ) : (
                     testCases.map((tc, index) => (
@@ -138,8 +160,28 @@ export function App() {
                             isExpanded={expandedIds.has(tc.id)}
                             onToggle={toggleExpand}
                             onViewFull={openFile}
+                            onViewDiff={viewDiff}
                         />
                     ))
+                )}
+            </div>
+
+            {/* Bottom Toolbar - Icon Only */}
+            <div className="bottom-toolbar">
+                <button className="toolbar-btn-icon" onClick={runAll} title="Run All Tests">
+                    <PlayIcon size={16} />
+                </button>
+                <button className="toolbar-btn-icon" onClick={handleAdd} title="Add Test Case">
+                    <PlusIcon size={16} />
+                </button>
+                {testCases.length > 0 && (
+                    <button
+                        className="toolbar-btn-icon"
+                        onClick={toggleAll}
+                        title={allExpanded ? "Collapse All" : "Expand All"}
+                    >
+                        {allExpanded ? <ChevronDownIcon size={16} /> : <ChevronRightIcon size={16} />}
+                    </button>
                 )}
             </div>
         </div>

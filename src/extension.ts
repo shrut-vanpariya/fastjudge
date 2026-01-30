@@ -5,6 +5,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { FastJudgeViewProvider } from './ui/webview/panel-provider';
+import { DiffContentProvider, DIFF_SCHEME } from './ui/webview/diff-provider';
 
 let panelProvider: FastJudgeViewProvider | undefined;
 
@@ -17,6 +18,12 @@ export async function activate(context: vscode.ExtensionContext) {
 		console.log('No workspace folder found');
 		return;
 	}
+
+	// Register virtual document provider for diff view
+	const diffProvider = new DiffContentProvider();
+	context.subscriptions.push(
+		vscode.workspace.registerTextDocumentContentProvider(DIFF_SCHEME, diffProvider)
+	);
 
 	// Create and register the webview provider
 	panelProvider = new FastJudgeViewProvider(context.extensionUri, workspaceRoot);

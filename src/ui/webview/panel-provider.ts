@@ -90,6 +90,9 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
             }
           }
           break;
+        case 'viewDiff':
+          await this.openDiffView(data.testCaseId);
+          break;
         case 'refresh':
           await this.refresh();
           break;
@@ -236,13 +239,7 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
       }
     }
 
-    // Show summary
-    const passed = results.filter((r) => r.verdict === 'AC').length;
-    const total = results.length;
-    const message = passed === total
-      ? `✅ All ${total} tests passed!`
-      : `❌ ${passed}/${total} tests passed`;
-    vscode.window.showInformationMessage(message);
+    // Pass count is now shown in the header via refresh()
   }
 
   /**
@@ -342,6 +339,47 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
     // Clear result since test case changed
     this._results.delete(testCaseId);
     await this.refresh();
+  }
+
+  /**
+   * Open VS Code diff view for a test case
+   */
+  public async openDiffView(testCaseId: string): Promise<void> {
+    const result = this._results.get(testCaseId);
+    if (!result || result.verdict === 'AC' || result.verdict === 'PENDING' || result.verdict === 'RUNNING') {
+      return;
+    }
+
+    const activeEditor = vscode.window.activeTextEditor;
+    if (!activeEditor) {
+      return;
+    }
+
+    const filePath = activeEditor.document.uri.fsPath;
+    const testCase = await this._testCaseManager.getTestCaseWithData(filePath, testCaseId);
+    if (!testCase) {
+      return;
+    }
+
+    // Use virtual document provider (no temp files!)
+    const { setDiffContent, createDiffUri } = await import('./diff-provider.js');
+
+    setDiffContent(
+      testCaseId,
+      result.expectedOutput || testCase.expected,
+      result.actualOutput || ''
+    );
+
+    const expectedUri = createDiffUri(testCaseId, 'expected');
+    const receivedUri = createDiffUri(testCaseId, 'received');
+
+    const testName = testCase.name || `Test ${testCaseId.slice(0, 8)}`;
+    await vscode.commands.executeCommand(
+      'vscode.diff',
+      expectedUri,
+      receivedUri,
+      `${testName}: Expected ↔ Received`
+    );
   }
 
   /**
