@@ -29,17 +29,20 @@
     "commands": [
       {
         "command": "fastjudge.openPanel",
-        "title": "Open FastJudge Panel",
+        "title": "Open Panel",
+        "category": "FastJudge",
         "icon": "$(beaker)"
       },
       {
         "command": "fastjudge.runAll",
         "title": "Run All Tests",
+        "category": "FastJudge",
         "icon": "$(play)"
       },
       {
         "command": "fastjudge.addTestCase",
         "title": "Add Test Case",
+        "category": "FastJudge",
         "icon": "$(add)"
       }
     ],
@@ -156,7 +159,23 @@
           "group": "navigation"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "fastjudge.runAll",
+        "key": "ctrl+f9",
+        "when": "resourceLangId =~ /cpp|python|java|javascript/"
+      },
+      {
+        "command": "fastjudge.addTestCase",
+        "key": "ctrl+f10",
+        "when": "resourceLangId =~ /cpp|python|java|javascript/"
+      },
+      {
+        "command": "fastjudge.openPanel",
+        "key": "ctrl+f11"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "pnpm run compile",

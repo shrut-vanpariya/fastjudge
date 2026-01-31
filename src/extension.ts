@@ -3,7 +3,6 @@
  */
 
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { FastJudgeViewProvider } from './ui/webview/panel-provider';
 import { DiffContentProvider, DIFF_SCHEME } from './ui/webview/diff-provider';
 
@@ -45,41 +44,32 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('fastjudge.runAll', async () => {
+			// Save reference to active editor before opening panel
+			const activeEditor = vscode.window.activeTextEditor;
+			// Open panel and run all tests
+			vscode.commands.executeCommand('workbench.view.extension.fastjudge');
 			if (panelProvider) {
 				await panelProvider.runAllTests();
+			}
+			// Refocus editor
+			if (activeEditor) {
+				vscode.window.showTextDocument(activeEditor.document, activeEditor.viewColumn, false);
 			}
 		})
 	);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('fastjudge.addTestCase', async () => {
-			// Quick input for adding test case via command
-			const input = await vscode.window.showInputBox({
-				prompt: 'Enter test input (or press Enter to open panel)',
-				placeHolder: 'Test input...',
-			});
-
-			if (input === undefined) {
-				return; // Cancelled
-			}
-
-			if (input === '') {
-				// Open panel for full form
-				vscode.commands.executeCommand('workbench.view.extension.fastjudge');
-				return;
-			}
-
-			const expected = await vscode.window.showInputBox({
-				prompt: 'Enter expected output',
-				placeHolder: 'Expected output...',
-			});
-
-			if (expected === undefined) {
-				return; // Cancelled
-			}
-
+			// Save reference to active editor before opening panel
+			const activeEditor = vscode.window.activeTextEditor;
+			// Open panel and create empty test case directly
+			vscode.commands.executeCommand('workbench.view.extension.fastjudge');
 			if (panelProvider) {
-				await panelProvider.addTestCase(input, expected);
+				await panelProvider.addTestCase('', '');
+			}
+			// Refocus editor
+			if (activeEditor) {
+				vscode.window.showTextDocument(activeEditor.document, activeEditor.viewColumn, false);
 			}
 		})
 	);
