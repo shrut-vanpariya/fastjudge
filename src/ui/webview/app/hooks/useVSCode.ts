@@ -61,6 +61,14 @@ export function useVSCode(onMessage: (message: ExtensionMessage) => void) {
         postMessage({ type: 'viewDiff', testCaseId });
     }, [postMessage]);
 
+    const stopAll = useCallback(() => {
+        postMessage({ type: 'stopAll' });
+    }, [postMessage]);
+
+    const deleteAll = useCallback(() => {
+        postMessage({ type: 'deleteAll' });
+    }, [postMessage]);
+
     return {
         runAll,
         runSingle,
@@ -70,6 +78,8 @@ export function useVSCode(onMessage: (message: ExtensionMessage) => void) {
         refresh,
         openFile,
         viewDiff,
+        stopAll,
+        deleteAll,
         postMessage,
     };
 }

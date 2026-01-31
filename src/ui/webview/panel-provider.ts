@@ -17,6 +17,8 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
   private _testCaseManager: TestCaseManager;
   private _judgeService: JudgeService;
   private _results: Map<string, JudgeResult> = new Map();
+  // Per-file run state: tracks abort controller and running count per file
+  private _fileRunState: Map<string, { controller: AbortController; count: number }> = new Map();
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -30,6 +32,26 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
   public async initialize(): Promise<void> {
     await this._testCaseManager.initialize();
     await this._judgeService.initialize();
+  }
+
+  /**
+   * Get or create run state for a file
+   */
+  private getOrCreateRunState(filePath: string) {
+    if (!this._fileRunState.has(filePath)) {
+      this._fileRunState.set(filePath, { controller: new AbortController(), count: 0 });
+    }
+    return this._fileRunState.get(filePath)!;
+  }
+
+  /**
+   * Cleanup run state for a file when no tests are running
+   */
+  private cleanupRunState(filePath: string) {
+    const state = this._fileRunState.get(filePath);
+    if (state && state.count === 0) {
+      this._fileRunState.delete(filePath);
+    }
   }
 
   /**
@@ -53,13 +75,21 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
     };
 
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-
+    
     // Handle messages from webview
     webviewView.webview.onDidReceiveMessage(async (data) => {
+      const filePath = vscode.window.activeTextEditor?.document.uri.fsPath;
       switch (data.type) {
-        case 'runAll':
+        case 'runAll': {
+          if (!filePath) { return; }
+          const state = this._fileRunState.get(filePath);
+          if (state && state.count > 0) {
+            vscode.window.showInformationMessage('Tests are already running for this file.');
+            return;
+          }
           await this.runAllTests();
           break;
+        }
         case 'runSingle':
           await this.runSingleTest(data.testCaseId);
           break;
@@ -95,6 +125,23 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
           break;
         case 'refresh':
           await this.refresh();
+          break;
+        case 'stopAll': {
+          if (!filePath) { return; }
+          const state = this._fileRunState.get(filePath);
+          if (!state || state.count === 0) {
+            vscode.window.showInformationMessage('No tests are running for this file.');
+            return;
+          }
+          // Abort current run for this file
+          state.controller.abort();
+          this._fileRunState.delete(filePath);
+          // Update panel to show stopped state
+          await this.refresh();
+          break;
+        }
+        case 'deleteAll':
+          await this.deleteAllTestCases();
           break;
       }
     });
@@ -170,76 +217,107 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
-    // Mark all as running
-    for (const tc of testCases) {
-      this._results.set(tc.id, {
-        testCaseId: tc.id,
-        verdict: 'RUNNING',
-        executionTimeMs: 0,
-        actualOutput: '',
-        expectedOutput: tc.expected,
-      });
+    // Get or create run state for this file (abort any previous run)
+    const existingState = this._fileRunState.get(filePath);
+    if (existingState) {
+      existingState.controller.abort();
     }
-    await this.refresh();
+    const runState = this.getOrCreateRunState(filePath);
+    // Reset controller for fresh run
+    runState.controller = new AbortController();
+    const signal = runState.controller.signal;
 
-    // Compile first
-    const compileResult = await this._judgeService.compile(filePath);
-    if (!compileResult.success) {
-      // Mark all as CE
-      for (const tc of testCases) {
-        this._results.set(tc.id, {
-          testCaseId: tc.id,
-          verdict: 'CE',
-          executionTimeMs: 0,
-          actualOutput: '',
-          expectedOutput: tc.expected,
-          errorMessage: compileResult.error,
-        });
+    // Run with progress indicator in sidebar
+    await vscode.window.withProgress(
+      {
+        location: { viewId: FastJudgeViewProvider.viewType },
+        title: 'Running tests...',
+      },
+      async () => {
+        // Mark all as running
+        for (const tc of testCases) {
+          this._results.set(tc.id, {
+            testCaseId: tc.id,
+            verdict: 'RUNNING',
+            executionTimeMs: 0,
+            actualOutput: '',
+            expectedOutput: tc.expected,
+          });
+        }
+        runState.count = testCases.length;
+        await this.refresh();
+
+        // Compile first
+        const compileResult = await this._judgeService.compile(filePath);
+        if (!compileResult.success) {
+          // Mark all as CE
+          for (const tc of testCases) {
+            this._results.set(tc.id, {
+              testCaseId: tc.id,
+              verdict: 'CE',
+              executionTimeMs: 0,
+              actualOutput: '',
+              expectedOutput: tc.expected,
+              errorMessage: compileResult.error,
+            });
+          }
+          await this.refresh();
+          vscode.window.showErrorMessage(`Compilation failed: ${compileResult.error}`);
+          return;
+        }
+
+        // Get execution mode from settings
+        const executionMode = getExecutionMode();
+
+        const results: JudgeResult[] = [];
+
+        if (executionMode === 'sequential') {
+          // Sequential batch mode (old approach - update UI only at end)
+          const batchResults = await this._judgeService.judgeAll(filePath, testCases, signal);
+          for (const result of batchResults) {
+            this._results.set(result.testCaseId, result);
+            results.push(result);
+          }
+          runState.count = 0;
+          this.cleanupRunState(filePath);
+          await this.refresh();
+        } else if (executionMode === 'parallel') {
+          // Parallel execution with live updates
+          const promises = testCases.map(async (tc) => {
+            const result = await this._judgeService.judgeTestCase(
+              compileResult.executablePath!,
+              tc,
+              undefined,
+              signal
+            );
+            this._results.set(result.testCaseId, result);
+            await this.refresh(); // Live update!
+            return result;
+          });
+          results.push(...(await Promise.all(promises)));
+          runState.count = 0;
+          this.cleanupRunState(filePath);
+          await this.refresh();
+        } else {
+          // Sequential-live (default) - run one at a time with live updates
+          for (const tc of testCases) {
+            const result = await this._judgeService.judgeTestCase(
+              compileResult.executablePath!,
+              tc,
+              undefined,
+              signal
+            );
+
+            this._results.set(result.testCaseId, result);
+            results.push(result);
+            await this.refresh(); // Live update!
+          }
+          runState.count = 0;
+          this.cleanupRunState(filePath);
+          await this.refresh();
+        }
       }
-      await this.refresh();
-      vscode.window.showErrorMessage(`Compilation failed: ${compileResult.error}`);
-      return;
-    }
-
-    // Get execution mode from settings
-    const executionMode = getExecutionMode();
-
-    const results: JudgeResult[] = [];
-
-    if (executionMode === 'sequential') {
-      // Sequential batch mode (old approach - update UI only at end)
-      const batchResults = await this._judgeService.judgeAll(filePath, testCases);
-      for (const result of batchResults) {
-        this._results.set(result.testCaseId, result);
-        results.push(result);
-      }
-      await this.refresh();
-    } else if (executionMode === 'parallel') {
-      // Parallel execution with live updates
-      const promises = testCases.map(async (tc) => {
-        const result = await this._judgeService.judgeTestCase(
-          compileResult.executablePath!,
-          tc
-        );
-        this._results.set(result.testCaseId, result);
-        await this.refresh(); // Live update!
-        return result;
-      });
-      results.push(...(await Promise.all(promises)));
-    } else {
-      // Sequential-live (default) - run one at a time with live updates
-      for (const tc of testCases) {
-        const result = await this._judgeService.judgeTestCase(
-          compileResult.executablePath!,
-          tc
-        );
-        this._results.set(result.testCaseId, result);
-        results.push(result);
-        await this.refresh(); // Live update!
-      }
-    }
-
-    // Pass count is now shown in the header via refresh()
+    );
   }
 
   /**
@@ -261,6 +339,10 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
+    // Get or create run state for this file
+    const runState = this.getOrCreateRunState(filePath);
+    const signal = runState.controller.signal;
+
     // Mark as running
     this._results.set(testCaseId, {
       testCaseId,
@@ -269,14 +351,17 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
       actualOutput: '',
       expectedOutput: testCase.expected,
     });
+    runState.count++;
     await this.refresh();
 
-    // Run test
-    const results = await this._judgeService.judgeAll(filePath, [testCase]);
+    // Run test with signal
+    const results = await this._judgeService.judgeAll(filePath, [testCase], signal);
     if (results.length > 0) {
       this._results.set(testCaseId, results[0]);
     }
 
+    runState.count--;
+    this.cleanupRunState(filePath);
     await this.refresh();
   }
 
@@ -339,6 +424,38 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
     // Clear result since test case changed
     this._results.delete(testCaseId);
     await this.refresh();
+  }
+
+  /**
+   * Delete all test cases with confirmation
+   */
+  private async deleteAllTestCases(): Promise<void> {
+    const activeEditor = vscode.window.activeTextEditor;
+    if (!activeEditor) {
+      return;
+    }
+
+    const filePath = activeEditor.document.uri.fsPath;
+    const testCases = await this._testCaseManager.getAllTestCasesWithData(filePath);
+
+    if (testCases.length === 0) {
+      vscode.window.showInformationMessage('No test cases to delete');
+      return;
+    }
+
+    const confirm = await vscode.window.showWarningMessage(
+      `Delete all ${testCases.length} test cases?`,
+      { modal: true },
+      'Delete All'
+    );
+
+    if (confirm === 'Delete All') {
+      for (const tc of testCases) {
+        await this._testCaseManager.deleteTestCase(filePath, tc.id);
+        this._results.delete(tc.id);
+      }
+      await this.refresh();
+    }
   }
 
   /**

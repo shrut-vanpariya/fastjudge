@@ -66,7 +66,8 @@ export class JudgeService {
      */
     async judgeAll(
         sourcePath: string,
-        testCases: TestCaseWithData[]
+        testCases: TestCaseWithData[],
+        signal?: AbortSignal
     ): Promise<JudgeResult[]> {
         const results: JudgeResult[] = [];
 
@@ -93,7 +94,8 @@ export class JudgeService {
             const result = await this.judgeTestCase(
                 compileResult.executablePath!,
                 testCase,
-                language || undefined
+                language || undefined,
+                signal
             );
             results.push(result);
         }
@@ -107,7 +109,8 @@ export class JudgeService {
     async judgeTestCase(
         executablePath: string,
         testCase: TestCaseWithData,
-        language?: string
+        language?: string,
+        signal?: AbortSignal
     ): Promise<JudgeResult> {
         // Delete previous results for this test case
         await this.resultStorage.deleteResults(testCase.id);
@@ -116,7 +119,8 @@ export class JudgeService {
         const execResult = await this.executor.execute(
             executablePath,
             testCase.input,
-            language as any
+            language as any,
+            signal
         );
 
         // Save results to files

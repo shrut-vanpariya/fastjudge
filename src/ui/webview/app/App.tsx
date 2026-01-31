@@ -6,7 +6,7 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { TestCard } from './components/TestCard';
 import { useVSCode } from './hooks/useVSCode';
 import { TestCaseWithResult, ExtensionMessage, Verdict } from './types';
-import { PlayIcon, PlusIcon, ChevronDownIcon, ChevronRightIcon } from './components/Icons';
+import { PlayIcon, PlusIcon, ChevronDownIcon, ChevronRightIcon, SquareIcon, TrashIcon } from './components/Icons';
 import './styles.css';
 
 // Verdicts that should auto-expand
@@ -93,7 +93,9 @@ export function App() {
         updateTestCase,
         refresh,
         openFile,
-        viewDiff
+        viewDiff,
+        stopAll,
+        deleteAll
     } = useVSCode(handleMessage);
 
     useEffect(() => {
@@ -171,8 +173,14 @@ export function App() {
                 <button className="toolbar-btn-icon" onClick={runAll} title="Run All Tests">
                     <PlayIcon size={16} />
                 </button>
+                <button className="toolbar-btn-icon" onClick={stopAll} title="Stop All">
+                    <SquareIcon size={16} />
+                </button>
                 <button className="toolbar-btn-icon" onClick={handleAdd} title="Add Test Case">
                     <PlusIcon size={16} />
+                </button>
+                <button className="toolbar-btn-icon" onClick={deleteAll} title="Delete All Test Cases">
+                    <TrashIcon size={16} />
                 </button>
                 {testCases.length > 0 && (
                     <button

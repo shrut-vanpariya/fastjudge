@@ -36,9 +36,10 @@ export class ExecutorService {
     async execute(
         executablePath: string,
         input: string,
-        language?: Language
+        language?: Language,
+        signal?: AbortSignal
     ): Promise<ExecutionResult> {
-        return this.runProcess(executablePath, input, language);
+        return this.runProcess(executablePath, input, language, signal);
     }
 
     /**
@@ -47,9 +48,10 @@ export class ExecutorService {
     async executeWithFile(
         executablePath: string,
         inputPath: string,
-        language?: Language
+        language?: Language,
+        signal?: AbortSignal
     ): Promise<ExecutionResult> {
-        return this.runProcessWithStream(executablePath, inputPath, language);
+        return this.runProcessWithStream(executablePath, inputPath, language, signal);
     }
 
     /**
@@ -58,9 +60,22 @@ export class ExecutorService {
     private runProcessWithStream(
         executablePath: string,
         inputPath: string,
-        language?: Language
+        language?: Language,
+        signal?: AbortSignal
     ): Promise<ExecutionResult> {
         return new Promise((resolve) => {
+            // Check if already aborted
+            if (signal?.aborted) {
+                resolve({
+                    stdout: '',
+                    stderr: 'Aborted',
+                    exitCode: -1,
+                    executionTimeMs: 0,
+                    timedOut: false,
+                });
+                return;
+            }
+
             const startTime = performance.now();
             let executionTimeMs = 0;
             let timedOut = false;
@@ -74,6 +89,7 @@ export class ExecutorService {
                 shell: false,
                 stdio: ['pipe', 'pipe', 'pipe'],
                 timeout: this.timeLimitMs,
+                signal,
             });
 
             let stdout = '';
@@ -146,13 +162,25 @@ export class ExecutorService {
     private runProcess(
         executablePath: string,
         input: string,
-        language?: Language
+        language?: Language,
+        signal?: AbortSignal
     ): Promise<ExecutionResult> {
         return new Promise((resolve) => {
+            // Check if already aborted
+            if (signal?.aborted) {
+                resolve({
+                    stdout: '',
+                    stderr: 'Aborted',
+                    exitCode: -1,
+                    executionTimeMs: 0,
+                    timedOut: false,
+                });
+                return;
+            }
+
             const startTime = performance.now();
             let executionTimeMs = 0;
             let timedOut = false;
-            let killed = false;
             let exitCode = -1;
 
             // Build command based on language
@@ -163,6 +191,7 @@ export class ExecutorService {
                 shell: false,
                 stdio: ['pipe', 'pipe', 'pipe'],
                 timeout: this.timeLimitMs,
+                signal, // Pass AbortSignal to spawn
             });
 
             let stdout = '';
@@ -181,7 +210,6 @@ export class ExecutorService {
             // Set up time limit
             const timer = setTimeout(() => {
                 timedOut = true;
-                killed = true;
                 this.killProcess(proc);
             }, this.timeLimitMs);
 

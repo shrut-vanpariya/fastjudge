@@ -263,3 +263,17 @@ export const ChevronRightIcon: React.FC<IconProps> = ({ size = 16, className, st
         <polyline points="9 18 15 12 9 6" />
     </svg>
 );
+
+// Square icon (Stop)
+export const SquareIcon: React.FC<IconProps> = ({ size = 16, className }) => (
+    <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        stroke="none"
+        className={className}
+    >
+        <rect x="4" y="4" width="16" height="16" rx="2" />
+    </svg>
+);
