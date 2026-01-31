@@ -373,7 +373,7 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
     const expectedUri = createDiffUri(testCaseId, 'expected');
     const receivedUri = createDiffUri(testCaseId, 'received');
 
-    const testName = testCase.name || `Test ${testCaseId.slice(0, 8)}`;
+    const testName = `TC ${testCaseId.slice(0, 8)}`;
     await vscode.commands.executeCommand(
       'vscode.diff',
       expectedUri,

@@ -59,14 +59,12 @@ export function TestCard({
     // Local state for editing
     const [input, setInput] = useState(testCase.input);
     const [expected, setExpected] = useState(testCase.expected);
-    const [name, setName] = useState(testCase.name || '');
 
     // Sync state when testCase prop changes (e.g. from refresh)
     useEffect(() => {
         setInput(testCase.input);
         setExpected(testCase.expected);
-        setName(testCase.name || '');
-    }, [testCase.input, testCase.expected, testCase.name]);
+    }, [testCase.input, testCase.expected]);
 
     const result = testCase.result;
     const verdict = result?.verdict || 'PENDING';
@@ -75,7 +73,6 @@ export function TestCard({
     const time = result?.executionTimeMs && result.executionTimeMs > 0
         ? `${Math.round(result.executionTimeMs)}ms`
         : '';
-    const displayName = name || `Test ${index + 1}`;
 
     const isMatch = verdict === 'AC';
     const hasDiff = verdict === 'WA' && result?.actualOutput !== undefined;
@@ -111,12 +108,8 @@ export function TestCard({
 
     const handleSave = () => {
         // Only update if changed
-        if (
-            input !== testCase.input ||
-            expected !== testCase.expected ||
-            (name && name !== testCase.name)
-        ) {
-            onUpdate(testCase.id, input, expected, name || undefined);
+        if (input !== testCase.input || expected !== testCase.expected) {
+            onUpdate(testCase.id, input, expected);
         }
     };
 
@@ -137,18 +130,7 @@ export function TestCard({
             {/* Header Row */}
             <div className="test-header" onClick={() => onToggle(testCase.id)}>
                 <div className="test-title">
-                    {isExpanded ? (
-                        <input
-                            className="name-input"
-                            value={name}
-                            placeholder={`Test ${index + 1}`}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => setName(e.target.value)}
-                            onBlur={handleSave}
-                        />
-                    ) : (
-                        <span className="test-name">{displayName}</span>
-                    )}
+                    <span className="test-name">TC {index + 1}</span>
                     <span className={`verdict-badge ${verdict.toLowerCase()}`}>
                         <VerdictIcon size={10} className={verdict === 'RUNNING' ? 'spinner' : ''} />
                         <span>{verdictConfig.label}</span>
