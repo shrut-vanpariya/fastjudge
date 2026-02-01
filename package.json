@@ -148,6 +148,46 @@
           "type": "string",
           "default": "node",
           "description": "Node.js command for JavaScript"
+        },
+        "fastjudge.companion.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Competitive Companion server to receive problems from browser"
+        },
+        "fastjudge.companion.port": {
+          "type": "number",
+          "enum": [
+            27121,
+            10045,
+            10043,
+            10042,
+            6174,
+            4244,
+            1327
+          ],
+          "enumDescriptions": [
+            "27121 - CPH (Competitive Programming Helper)",
+            "10045 - CP Editor",
+            "10043 - Caide / AI Virtual Assistant",
+            "10042 - acmX",
+            "6174 - Mind Sport",
+            "4244 - Hightail",
+            "1327 - cpbooster"
+          ],
+          "default": 27121,
+          "description": "Port for Competitive Companion server"
+        },
+        "fastjudge.companion.defaultLanguage": {
+          "type": "string",
+          "enum": [
+            "",
+            "C++",
+            "Python",
+            "Java",
+            "JavaScript"
+          ],
+          "default": "",
+          "description": "Default language for new files (empty = ask each time)"
         }
       }
     },

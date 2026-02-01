@@ -44,6 +44,21 @@ export function getResultRetentionDays(): number {
 }
 
 /**
+ * Companion settings
+ */
+export function isCompanionEnabled(): boolean {
+    return getConfig().get<boolean>('companion.enabled', true);
+}
+
+export function getCompanionPort(): number {
+    return getConfig().get<number>('companion.port', 27121);
+}
+
+export function getCompanionDefaultLanguage(): string {
+    return getConfig().get<string>('companion.defaultLanguage', '');
+}
+
+/**
  * Get language configuration from VS Code settings
  * All values are read dynamically - no hardcoding!
  */

@@ -8,6 +8,7 @@ import * as path from 'path';
 import { TestCaseManager } from '../../storage/testcase-manager';
 import { JudgeService } from '../../core/judge-service';
 import { JudgeResult, TestCaseWithData, Verdict } from '../../types';
+import { setDiffContent, createDiffUri } from './diff-provider';
 import { getTimeLimitMs, getComparisonMode, getExecutionMode, detectLanguage, getSupportedExtensions } from '../../config/settings';
 
 export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
@@ -22,17 +23,14 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
-    private readonly _workspaceRoot: string
+    testCaseManager: TestCaseManager,
+    judgeService: JudgeService
   ) {
-    this._testCaseManager = new TestCaseManager(_workspaceRoot);
-    const outputDir = path.join(_workspaceRoot, '.fastjudge', 'out');
-    this._judgeService = new JudgeService(outputDir, _workspaceRoot);
+    this._testCaseManager = testCaseManager;
+    this._judgeService = judgeService;
   }
 
-  public async initialize(): Promise<void> {
-    await this._testCaseManager.initialize();
-    await this._judgeService.initialize();
-  }
+
 
   /**
    * Get or create run state for a file
@@ -75,7 +73,7 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
     };
 
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-    
+
     // Handle messages from webview
     webviewView.webview.onDidReceiveMessage(async (data) => {
       const filePath = vscode.window.activeTextEditor?.document.uri.fsPath;
@@ -158,18 +156,25 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
   /**
    * Refresh the panel with current file's test cases
    */
-  public async refresh(): Promise<void> {
+  public async refresh(targetFilePath?: string): Promise<void> {
     if (!this._view) {
       return;
     }
 
-    const activeEditor = vscode.window.activeTextEditor;
-    if (!activeEditor) {
-      this._postMessage({ type: 'noFile' });
-      return;
+    let filePath: string | undefined = targetFilePath;
+
+    if (!filePath) {
+      const activeEditor = vscode.window.activeTextEditor;
+      if (!activeEditor) {
+        // Only clear if we really don't have a target file and no active editor
+        // But if we are just exploring, we might want to keep showing the last file?
+        // For now, let's stick to current behavior: show no file
+        this._postMessage({ type: 'noFile' });
+        return;
+      }
+      filePath = activeEditor.document.uri.fsPath;
     }
 
-    const filePath = activeEditor.document.uri.fsPath;
     const testCases = await this._testCaseManager.getAllTestCasesWithData(filePath);
 
     // Load any persisted results that we don't have in memory
@@ -477,9 +482,6 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
     if (!testCase) {
       return;
     }
-
-    // Use virtual document provider (no temp files!)
-    const { setDiffContent, createDiffUri } = await import('./diff-provider.js');
 
     setDiffContent(
       testCaseId,

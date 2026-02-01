@@ -3,10 +3,17 @@
  */
 
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { FastJudgeViewProvider } from './ui/webview/panel-provider';
 import { DiffContentProvider, DIFF_SCHEME } from './ui/webview/diff-provider';
+import { CompanionManager } from './companion/companion-manager';
+import { TestCaseManager } from './storage/testcase-manager';
+import { JudgeService } from './core/judge-service';
 
 let panelProvider: FastJudgeViewProvider | undefined;
+let companionManager: CompanionManager | undefined;
+let testCaseManager: TestCaseManager | undefined;
+let judgeService: JudgeService | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
 	console.log('FastJudge is now active!');
@@ -24,15 +31,46 @@ export async function activate(context: vscode.ExtensionContext) {
 		vscode.workspace.registerTextDocumentContentProvider(DIFF_SCHEME, diffProvider)
 	);
 
+	// Initialize TestCaseManager
+	testCaseManager = new TestCaseManager(workspaceRoot);
+	await testCaseManager.initialize();
+	
+	// Initialize Judge Service
+	const outputDir = path.join(workspaceRoot, '.fastjudge', 'out');
+	judgeService = new JudgeService(outputDir, workspaceRoot);
+	await judgeService.initialize();
+	
 	// Create and register the webview provider
-	panelProvider = new FastJudgeViewProvider(context.extensionUri, workspaceRoot);
-	await panelProvider.initialize();
-
+	// Pass the shared instances
+	panelProvider = new FastJudgeViewProvider(context.extensionUri, testCaseManager!, judgeService!);
+	
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(
 			FastJudgeViewProvider.viewType,
 			panelProvider
 		)
+	);
+	
+	// Competitive Companion Integration
+	companionManager = new CompanionManager(testCaseManager!);
+
+	// Refresh panel when test cases are imported
+	companionManager.onTestCasesAdded((filePath) => {
+		if (panelProvider) {
+			panelProvider.refresh(filePath);
+			// Auto-open the panel
+			vscode.commands.executeCommand('fastjudge.openPanel');
+		}
+	});
+
+	await companionManager.initialize();
+	context.subscriptions.push({ dispose: () => companionManager?.dispose() });
+
+	// Register companion toggle command
+	context.subscriptions.push(
+		vscode.commands.registerCommand('fastjudge.companion.toggle', () => {
+			companionManager?.toggle();
+		})
 	);
 
 	// Register commands
@@ -76,10 +114,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Listen for configuration changes
 	context.subscriptions.push(
-		vscode.workspace.onDidChangeConfiguration((e) => {
-			if (e.affectsConfiguration('fastjudge')) {
-				// Apply new configuration
-				// (Could update time limits, comparison mode, etc.)
+		vscode.workspace.onDidChangeConfiguration(async (e) => {
+			if (e.affectsConfiguration('fastjudge.companion')) {
+				await companionManager?.restart();
 			}
 		})
 	);
