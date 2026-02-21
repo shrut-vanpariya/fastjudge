@@ -2,7 +2,7 @@
   "name": "fastjudge",
   "displayName": "FastJudge",
   "description": "Lightning-fast local judge for compiling, running, and testing code across languages",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {
     "name": "Shrut Vanpariya",
     "email": "shrutvanpariya@gmail.com"
