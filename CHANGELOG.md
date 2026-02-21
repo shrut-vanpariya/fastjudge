@@ -5,9 +5,21 @@ All notable changes to FastJudge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - 2026-01-31
+## [0.2.0] - 2026-02-22
 
 ### Added
+- Competitive Companion integration for fetching problems and test cases
+- "Stop" and "Delete" buttons for test cases, utilizing `AbortController` to cancel running processes
+- Keyboard shortcuts for common actions: Run All, Add Test Case, Open Panel
+- Independent test execution state per file, allowing simultaneous test runs across multiple files without interference
+
+### Improved
+- Execution handling now correctly parses signals (e.g., SIGTERM) and reports a `STOPPED` state
+- Refactored internal architecture for more robust service injection
+
+---
+
+## [0.1.0] - 2026-01-31
 - Modern UI redesign with Lucide-style SVG icons
 - Virtual document provider for diff view (no temp files)
 - Auto-collapse test cards on run
