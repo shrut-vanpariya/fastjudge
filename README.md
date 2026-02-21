@@ -112,4 +112,4 @@ To contribute or build FastJudge locally:
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. *(If no LICENSE file is present, standard copyright applies).*
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
