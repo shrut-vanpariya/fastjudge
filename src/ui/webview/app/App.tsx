@@ -25,7 +25,7 @@ export function App() {
         const total = testCases.length;
         const passed = testCases.filter(tc => tc.result?.verdict === 'AC').length;
         const hasAnyResult = testCases.some(tc =>
-            tc.result?.verdict && tc.result.verdict !== 'PENDING' && tc.result.verdict !== 'RUNNING'
+            tc.result?.verdict && tc.result.verdict !== 'PENDING' && tc.result.verdict !== 'RUNNING' && tc.result.verdict !== 'STOPPED'
         );
         return { passedCount: passed, totalCount: total, hasResults: hasAnyResult };
     }, [testCases]);

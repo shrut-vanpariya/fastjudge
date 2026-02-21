@@ -38,6 +38,10 @@
   --fj-color-pending-bg: rgba(107, 114, 128, 0.05);
   --fj-color-pending-border: rgba(107, 114, 128, 0.3);
 
+  --fj-color-stopped: #0d9488;
+  --fj-color-stopped-bg: rgba(13, 148, 136, 0.1);
+  --fj-color-stopped-border: rgba(13, 148, 136, 0.4);
+
   /* Typography */
   --fj-font-mono: var(--vscode-editor-font-family, 'Consolas', 'Monaco', monospace);
   --fj-font-size-xs: 10px;

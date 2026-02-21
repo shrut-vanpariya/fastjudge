@@ -17,6 +17,8 @@ class MockExecutorService extends ExecutorService {
             exitCode: 0,
             executionTimeMs: 100,
             timedOut: false,
+            aborted: false,
+            signal: null,
         };
     }
 

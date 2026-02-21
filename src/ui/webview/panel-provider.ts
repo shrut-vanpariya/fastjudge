@@ -267,7 +267,8 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
             });
           }
           await this.refresh();
-          vscode.window.showErrorMessage(`Compilation failed: ${compileResult.error}`);
+          runState.count = 0;
+          this.cleanupRunState(filePath);
           return;
         }
 
@@ -468,7 +469,7 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
    */
   public async openDiffView(testCaseId: string): Promise<void> {
     const result = this._results.get(testCaseId);
-    if (!result || result.verdict === 'AC' || result.verdict === 'PENDING' || result.verdict === 'RUNNING') {
+    if (!result || result.verdict === 'AC' || result.verdict === 'PENDING' || result.verdict === 'RUNNING' || result.verdict === 'STOPPED') {
       return;
     }
 

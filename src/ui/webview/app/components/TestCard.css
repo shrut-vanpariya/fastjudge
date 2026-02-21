@@ -51,6 +51,10 @@
   border-left-color: var(--fj-color-pending);
 }
 
+.test-card.verdict-stopped {
+  border-left-color: var(--fj-color-stopped);
+}
+
 /* =============================================
    TEST HEADER
    ============================================= */
@@ -164,6 +168,11 @@
   color: #fff;
 }
 
+.verdict-badge.stopped {
+  background: var(--fj-color-stopped);
+  color: #fff;
+}
+
 /* Time display */
 .time {
   font-size: var(--fj-font-size-xs);
@@ -235,6 +244,10 @@
   display: flex;
   align-items: center;
   gap: var(--fj-space-2);
+}
+
+.section-label svg {
+  flex-shrink: 0;
 }
 
 .truncated-indicator {
@@ -374,4 +387,13 @@ textarea.code-box::placeholder {
 
 .btn-link svg {
   flex-shrink: 0;
+}
+
+/* =============================================
+   ERROR DISPLAY
+   ============================================= */
+
+.error-text {
+  color: var(--fj-color-ce);
+  font-weight: 600;
 }

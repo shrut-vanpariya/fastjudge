@@ -15,7 +15,8 @@ import {
     CircleIcon,
     GearIcon,
     DiffIcon,
-    DocumentIcon
+    DocumentIcon,
+    SquareIcon
 } from './Icons';
 import './TestCard.css';
 
@@ -41,6 +42,7 @@ const VERDICT_CONFIG: Record<Verdict, { icon: React.FC<{ size?: number; classNam
     IE: { icon: WarningIcon, label: 'IE' },
     PENDING: { icon: CircleIcon, label: 'PENDING' },
     RUNNING: { icon: SpinnerIcon, label: 'RUNNING' },
+    STOPPED: { icon: SquareIcon, label: 'STOPPED' },
 };
 
 const MAX_DIFF_LINES = 10;
@@ -257,6 +259,15 @@ export function TestCard({
                                     <DocumentIcon size={12} /> View Full Errors
                                 </button>
                             )}
+                        </div>
+                    )}
+
+                    {/* Error Message — human-readable summary */}
+                    {result?.errorMessage && (
+                        <div className="section">
+                            <div className="section-label error-text">
+                                <WarningIcon size={12} /> {result.errorMessage}
+                            </div>
                         </div>
                     )}
                 </div>

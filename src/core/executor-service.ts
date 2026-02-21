@@ -13,14 +13,6 @@ import { LanguageService, languageService } from './language-service';
 /** Default time limit in milliseconds */
 const DEFAULT_TIME_LIMIT_MS = 2000;
 
-/** Signal names mapping */
-const SIGNAL_NAMES: Record<number, string> = {
-    11: 'SIGSEGV',  // Segmentation fault
-    8: 'SIGFPE',    // Floating point exception
-    6: 'SIGABRT',   // Aborted
-    9: 'SIGKILL',   // Killed
-};
-
 export class ExecutorService {
     private timeLimitMs: number;
     private langService: LanguageService;
@@ -64,14 +56,16 @@ export class ExecutorService {
         signal?: AbortSignal
     ): Promise<ExecutionResult> {
         return new Promise((resolve) => {
-            // Check if already aborted
+            // Case 2: Already aborted before process spawns
             if (signal?.aborted) {
                 resolve({
                     stdout: '',
-                    stderr: 'Aborted',
+                    stderr: '',
                     exitCode: -1,
+                    signal: null,
                     executionTimeMs: 0,
                     timedOut: false,
+                    aborted: true,
                 });
                 return;
             }
@@ -80,6 +74,7 @@ export class ExecutorService {
             let executionTimeMs = 0;
             let timedOut = false;
             let exitCode = -1;
+            let exitSignal: NodeJS.Signals | null = null;
 
             // Build command based on language
             const { command, args } = this.buildCommand(executablePath, language);
@@ -112,9 +107,10 @@ export class ExecutorService {
             }, this.timeLimitMs);
 
             // Handle process exit (stop timer here)
-            proc.on('exit', (code) => {
+            proc.on('exit', (code, signal) => {
                 executionTimeMs = performance.now() - startTime;
                 exitCode = code ?? -1;
+                exitSignal = signal;
             });
 
             // Handle stream close (resolve here to ensure we have all output)
@@ -126,12 +122,15 @@ export class ExecutorService {
                     executionTimeMs = performance.now() - startTime;
                 }
 
+                // Case 1: Process may have been killed by abort signal
                 resolve({
                     stdout,
                     stderr,
                     exitCode,
+                    signal: exitSignal,
                     executionTimeMs,
                     timedOut,
+                    aborted: !!signal?.aborted,
                 });
             });
 
@@ -140,10 +139,12 @@ export class ExecutorService {
                 clearTimeout(timer);
                 resolve({
                     stdout: '',
-                    stderr: `Execution error: ${err.message}`,
+                    stderr: signal?.aborted ? '' : `Execution error: ${err.message}`,
                     exitCode: -1,
+                    signal: null,
                     executionTimeMs: performance.now() - startTime,
                     timedOut: false,
+                    aborted: !!signal?.aborted,
                 });
             });
 
@@ -166,14 +167,16 @@ export class ExecutorService {
         signal?: AbortSignal
     ): Promise<ExecutionResult> {
         return new Promise((resolve) => {
-            // Check if already aborted
+            // Case 2: Already aborted before process spawns
             if (signal?.aborted) {
                 resolve({
                     stdout: '',
-                    stderr: 'Aborted',
+                    stderr: '',
                     exitCode: -1,
+                    signal: null,
                     executionTimeMs: 0,
                     timedOut: false,
+                    aborted: true,
                 });
                 return;
             }
@@ -182,6 +185,7 @@ export class ExecutorService {
             let executionTimeMs = 0;
             let timedOut = false;
             let exitCode = -1;
+            let exitSignal: NodeJS.Signals | null = null;
 
             // Build command based on language
             const { command, args } = this.buildCommand(executablePath, language);
@@ -214,9 +218,10 @@ export class ExecutorService {
             }, this.timeLimitMs);
 
             // Handle process exit (stop timer here)
-            proc.on('exit', (code) => {
+            proc.on('exit', (code, signal) => {
                 executionTimeMs = performance.now() - startTime;
                 exitCode = code ?? -1;
+                exitSignal = signal;
             });
 
             // Handle stream close (resolve here)
@@ -227,12 +232,15 @@ export class ExecutorService {
                     executionTimeMs = performance.now() - startTime;
                 }
 
+                // Case 1: Process may have been killed by abort signal
                 resolve({
                     stdout,
                     stderr,
                     exitCode,
+                    signal: exitSignal,
                     executionTimeMs,
                     timedOut,
+                    aborted: !!signal?.aborted,
                 });
             });
 
@@ -241,10 +249,12 @@ export class ExecutorService {
                 clearTimeout(timer);
                 resolve({
                     stdout: '',
-                    stderr: `Execution error: ${err.message}`,
+                    stderr: signal?.aborted ? '' : `Execution error: ${err.message}`,
                     exitCode: -1,
+                    signal: null,
                     executionTimeMs: performance.now() - startTime,
                     timedOut: false,
+                    aborted: !!signal?.aborted,
                 });
             });
 
@@ -317,20 +327,7 @@ export class ExecutorService {
         }
     }
 
-    /**
-     * Parse signal from exit code
-     */
-    parseSignal(exitCode: number): string | undefined {
-        // On Unix, signal = 128 + signal_number or negative signal
-        if (exitCode > 128) {
-            const signal = exitCode - 128;
-            return SIGNAL_NAMES[signal];
-        }
-        if (exitCode < 0) {
-            return SIGNAL_NAMES[Math.abs(exitCode)];
-        }
-        return undefined;
-    }
+
 
     /**
      * Set time limit

@@ -29,14 +29,10 @@ export type Verdict =
     | 'CE'       // 🔨 Compilation Error
     | 'IE'       // ⚠️ Internal Error
     | 'PENDING'  // ⚪ Not yet run
-    | 'RUNNING'; // ⏳ Currently executing
+    | 'RUNNING'  // ⏳ Currently executing
+    | 'STOPPED'; // 🛑 Stopped by user
 
-/** Runtime Error subtypes for debugging */
-export type RuntimeErrorSubtype =
-    | 'SIGSEGV'  // Segmentation fault
-    | 'SIGFPE'   // Floating point exception
-    | 'SIGABRT'  // Assertion failed
-    | 'UNKNOWN'; // Unknown crash
+
 
 // ============================================================================
 // Test Cases
@@ -69,6 +65,8 @@ export interface ExecutionResult {
     exitCode: number;
     executionTimeMs: number;
     timedOut: boolean;
+    aborted: boolean;
+    signal: NodeJS.Signals | null;
     // File storage for large outputs
     stdoutPath?: string;
     stderrPath?: string;
@@ -101,13 +99,12 @@ export interface JudgeResult {
     outputTruncated?: boolean;
 
     // For RE verdict
-    runtimeErrorSubtype?: RuntimeErrorSubtype;
     exitCode?: number;
-    signal?: string;
-    stderr?: string;  // Error output for debugging
+    signal?: NodeJS.Signals | null;      // Parsed signal name (e.g., 'SIGSEGV', 'ACCESS_VIOLATION')
+    stderr?: string;      // Raw error output for debugging
 
-    // For CE/IE
-    errorMessage?: string;
+    // For CE/IE/RE/TLE
+    errorMessage?: string;  // Human-readable error summary
 }
 
 // ============================================================================

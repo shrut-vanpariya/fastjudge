@@ -16,12 +16,15 @@ export interface JudgeResult {
     executionTimeMs: number;
     actualOutput: string;
     expectedOutput: string;
-    errorMessage?: string;
-    // New fields for I/O optimization
+    errorMessage?: string;    // Human-readable error summary (CE/RE/TLE/IE)
+    // I/O file paths for large outputs
     stdoutPath?: string;
     stderrPath?: string;
     outputTruncated?: boolean;
-    stderr?: string;
+    stderr?: string;          // Raw error output for debugging
+    // RE-specific fields
+    exitCode?: number;
+    signal?: string | null;          // Parsed signal name
 }
 
 export type Verdict =
@@ -32,7 +35,8 @@ export type Verdict =
     | 'CE'
     | 'IE'
     | 'PENDING'
-    | 'RUNNING';
+    | 'RUNNING'
+    | 'STOPPED';
 
 export interface TestCaseWithResult extends TestCase {
     result?: JudgeResult;
