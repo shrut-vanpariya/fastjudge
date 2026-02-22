@@ -2,7 +2,7 @@
   "name": "fastjudge",
   "displayName": "FastJudge",
   "description": "Lightning-fast local judge for compiling, running, and testing code across languages",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "MIT",
   "author": {
     "name": "Shrut Vanpariya",
