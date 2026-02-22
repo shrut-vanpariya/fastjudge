@@ -44,10 +44,29 @@ Customize FastJudge to fit your workflow in your `settings.json` or through the 
 | `fastjudge.general.comparisonMode` | `trim` | Mode for output comparison: `exact`, `trim` (ignores trailing whitespace), or `ignoreWhitespace`. |
 | `fastjudge.general.executionMode` | `sequential-live` | Mode for running tests: `sequential`, `sequential-live`, or `parallel`. |
 | `fastjudge.general.resultRetentionDays` | `7` | Days to keep test results before they are auto-cleaned. |
+| `fastjudge.languages` | *(built-in)* | Language configurations object — customize compile/run commands or add new languages. |
 | `fastjudge.companion.enabled` | `true` | Enable Competitive Companion server integration. |
 | `fastjudge.companion.port` | `27121` | Port for the companion server (default CP Helper port). |
+| `fastjudge.companion.defaultLanguage` | `""` | Default language for new files created via Companion (empty = ask each time). |
 
-*Language-specific commands (e.g., `fastjudge.language.cpp.command`) can also be customized if your environment uses non-standard aliases.*
+### Adding a Custom Language
+
+You can add any language by editing `fastjudge.languages` in your `settings.json`:
+
+```jsonc
+"fastjudge.languages": {
+    "rust": {
+        "name": "Rust",
+        "extensions": [".rs"],
+        "compileArgs": ["rustc", "${sourceFile}", "-o", "${executableFile}"],
+        "runArgs": ["${executableFile}"]
+    }
+}
+```
+
+**Available variables:** `${sourceFile}`, `${outputDir}`, `${executableFile}`, `${className}`
+
+For languages with non-standard compiled output (e.g., Java's `.class` files), add `"outputExtension": ".class"`.
 
 ## Usage Examples
 

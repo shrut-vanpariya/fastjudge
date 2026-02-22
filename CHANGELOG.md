@@ -5,6 +5,26 @@ All notable changes to FastJudge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-02-22
+
+### Added
+- **Language Provider API**: Extensible, data-driven language registry replacing hardcoded language configurations
+- `fastjudge.languages` unified setting — add any language via `settings.json` with custom compile/run commands
+- `outputExtension` config field for languages with non-standard compiled output (e.g., `.class` for Java)
+- Duplicate extension detection with console warnings during configuration loading
+
+### Improved
+- Cache validation now uses stored `executablePath` per language — fixes Java recompiling every run
+- File extensions are normalized to lowercase — case-insensitive matching for user configs
+- `defaultLanguage` setting accepts any language name or ID, not just built-in languages
+- Language detection is performed once per test run instead of per test case
+
+### Breaking Changes
+- Replaced `fastjudge.language.cpp.*`, `fastjudge.language.python.*`, etc. with unified `fastjudge.languages` object
+- `${outputFile}` variable removed — use `${executableFile}` in compile/run args
+
+---
+
 ## [0.2.0] - 2026-02-22
 
 ### Added
