@@ -113,42 +113,110 @@
           "maximum": 30,
           "description": "Days to keep test results before auto-cleanup"
         },
-        "fastjudge.language.cpp.command": {
-          "type": "string",
-          "default": "g++",
-          "description": "C++ compiler command"
-        },
-        "fastjudge.language.cpp.args": {
-          "type": "array",
-          "items": {
-            "type": "string"
+        "fastjudge.languages": {
+          "type": "object",
+          "description": "Custom language configurations. Keys are the language IDs (e.g., 'cpp', 'rust').",
+          "default": {
+            "cpp": {
+              "name": "C++",
+              "extensions": [
+                ".cpp",
+                ".cc",
+                ".cxx",
+                ".c++"
+              ],
+              "compileArgs": [
+                "g++",
+                "-O2",
+                "-std=c++17",
+                "-Wall",
+                "${sourceFile}",
+                "-o",
+                "${executableFile}"
+              ],
+              "runArgs": [
+                "${executableFile}"
+              ]
+            },
+            "python": {
+              "name": "Python",
+              "extensions": [
+                ".py"
+              ],
+              "runArgs": [
+                "python",
+                "${sourceFile}"
+              ]
+            },
+            "java": {
+              "name": "Java",
+              "extensions": [
+                ".java"
+              ],
+              "compileArgs": [
+                "javac",
+                "-d",
+                "${outputDir}",
+                "${sourceFile}"
+              ],
+              "runArgs": [
+                "java",
+                "-cp",
+                "${outputDir}",
+                "${className}"
+              ],
+              "outputExtension": ".class"
+            },
+            "javascript": {
+              "name": "JavaScript",
+              "extensions": [
+                ".js"
+              ],
+              "runArgs": [
+                "node",
+                "${sourceFile}"
+              ]
+            }
           },
-          "default": [
-            "-O2",
-            "-std=c++17",
-            "-Wall"
-          ],
-          "description": "C++ compiler arguments"
-        },
-        "fastjudge.language.python.command": {
-          "type": "string",
-          "default": "python",
-          "description": "Python interpreter command"
-        },
-        "fastjudge.language.java.command": {
-          "type": "string",
-          "default": "javac",
-          "description": "Java compiler command"
-        },
-        "fastjudge.language.java.runCommand": {
-          "type": "string",
-          "default": "java",
-          "description": "Java runtime command"
-        },
-        "fastjudge.language.javascript.command": {
-          "type": "string",
-          "default": "node",
-          "description": "Node.js command for JavaScript"
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "name",
+              "extensions",
+              "runArgs"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Display name"
+              },
+              "extensions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "File extensions for this language (e.g., ['.rs'])"
+              },
+              "compileArgs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Arguments to compile the script. Available variables: ${sourceFile}, ${outputDir}, ${executableFile}, ${className}"
+              },
+              "runArgs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Arguments to run the script. Available variables: ${sourceFile}, ${outputDir}, ${executableFile}, ${className}"
+              },
+              "outputExtension": {
+                "type": "string",
+                "description": "File extension of compiled output (e.g., '.class' for Java). Defaults to platform binary (.exe on Windows)"
+              }
+            }
+          }
         },
         "fastjudge.companion.enabled": {
           "type": "boolean",
@@ -180,15 +248,8 @@
         },
         "fastjudge.companion.defaultLanguage": {
           "type": "string",
-          "enum": [
-            "",
-            "C++",
-            "Python",
-            "Java",
-            "JavaScript"
-          ],
           "default": "",
-          "description": "Default language for new files (empty = ask each time)"
+          "description": "Default language for new files (empty = ask each time). Use the display name (e.g., 'C++', 'Rust') or language ID (e.g., 'cpp', 'rust')."
         }
       }
     },

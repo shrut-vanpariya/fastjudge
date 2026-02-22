@@ -7,8 +7,8 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { spawn } from 'child_process';
-import { CompileResult, CacheEntry, ICompilationCache, Language } from '../types';
-import { LanguageService, languageService } from './language-service';
+import { CompileResult, CacheEntry, ICompilationCache, ILanguageProvider } from '../types';
+import { languageRegistry, CustomLanguageProvider } from './language-registry';
 
 // ============================================================================
 // Cache Implementations
@@ -43,18 +43,15 @@ export class MemoryCache implements ICompilationCache {
 // ============================================================================
 
 export class CompilerService {
-    private langService: LanguageService;
     private outputDir: string;
     private cache: ICompilationCache;
 
     constructor(
         outputDir: string,
-        cache?: ICompilationCache,
-        langService?: LanguageService
+        cache?: ICompilationCache
     ) {
         this.outputDir = outputDir;
         this.cache = cache || new MemoryCache();
-        this.langService = langService || languageService;
     }
 
     /**
@@ -65,8 +62,8 @@ export class CompilerService {
         const startTime = Date.now();
 
         // Detect language
-        const language = this.langService.detectLanguage(sourcePath);
-        if (!language) {
+        const provider = languageRegistry.detectProvider(sourcePath);
+        if (!provider) {
             return {
                 success: false,
                 error: `Unsupported file type: ${path.extname(sourcePath)}`,
@@ -74,11 +71,13 @@ export class CompilerService {
             };
         }
 
+        const compileCmd = provider.getCompileCommand(sourcePath, this.outputDir);
+
         // For interpreted languages, no compilation needed
-        if (!this.langService.requiresCompilation(language)) {
+        if (!compileCmd) {
             return {
                 success: true,
-                executablePath: sourcePath,  // The source file itself
+                outputDir: this.outputDir,
                 compilationTimeMs: 0,
                 cached: true,
             };
@@ -101,34 +100,58 @@ export class CompilerService {
         // Check cache
         const cached = this.cache.get(sourcePath);
         if (cached && cached.contentHash === hash) {
-            // Verify executable still exists
-            try {
-                await fs.access(cached.executablePath);
-                return {
-                    success: true,
-                    executablePath: cached.executablePath,
-                    compilationTimeMs: Date.now() - startTime,
-                    cached: true,
-                };
-            } catch {
-                // Executable deleted, need to recompile
-                this.cache.delete(sourcePath);
+            // Verify the compiled output still exists
+            if (cached.executablePath) {
+                try {
+                    await fs.access(cached.executablePath);
+                } catch {
+                    // Executable deleted, invalidate cache and recompile
+                    this.cache.delete(sourcePath);
+                    // Fall through to recompile below
+                    return this.recompile(sourcePath, provider, hash, startTime);
+                }
             }
+
+            return {
+                success: true,
+                outputDir: cached.outputDir,
+                compilationTimeMs: Date.now() - startTime,
+                cached: true,
+            };
         }
 
-        // Compile
-        const executablePath = this.langService.getExecutablePath(sourcePath, this.outputDir);
+        return this.recompile(sourcePath, provider, hash, startTime);
+    }
 
+    /**
+     * Compile (or recompile) with cache update
+     */
+    private async recompile(
+        sourcePath: string,
+        provider: ILanguageProvider,
+        hash: string,
+        startTime: number
+    ): Promise<CompileResult> {
         // Ensure output directory exists
         await fs.mkdir(this.outputDir, { recursive: true });
 
-        const result = await this.runCompiler(sourcePath, executablePath, language);
+        const compileCmd = provider.getCompileCommand(sourcePath, this.outputDir);
+        if (!compileCmd) {
+            return { success: false, error: 'No compile command', compilationTimeMs: Date.now() - startTime };
+        }
+
+        const result = await this.runCompiler(sourcePath, compileCmd);
 
         if (result.success) {
-            // Update cache
+            // Compute executable path for cache validation
+            const executablePath = (provider instanceof CustomLanguageProvider)
+                ? provider.getExecutablePath(sourcePath, this.outputDir)
+                : undefined;
+
             this.cache.set(sourcePath, {
                 contentHash: hash,
-                executablePath: result.executablePath!,
+                outputDir: result.outputDir!,
+                executablePath,
                 compiledAt: Date.now(),
             });
         }
@@ -145,33 +168,14 @@ export class CompilerService {
      */
     private async runCompiler(
         sourcePath: string,
-        executablePath: string,
-        language: Language
+        compileCmd: { command: string, args: string[] }
     ): Promise<CompileResult> {
-        const config = this.langService.getConfig(language);
-
-        if (!config.compile) {
-            return {
-                success: false,
-                error: `No compile configuration for ${language}`,
-                compilationTimeMs: 0,
-            };
-        }
-
-        const { command, args, outputFlag } = config.compile;
-
-        // Build command arguments
-        const cmdArgs = [
-            ...args,
-            sourcePath,
-            outputFlag,
-            executablePath,
-        ];
+        const { command, args } = compileCmd;
 
         return new Promise((resolve) => {
-            const proc = spawn(command, cmdArgs, {
+            const proc = spawn(command, args, {
                 cwd: path.dirname(sourcePath),
-                shell: true,
+                shell: false,
             });
 
             let stderr = '';
@@ -197,7 +201,7 @@ export class CompilerService {
                 if (code === 0) {
                     resolve({
                         success: true,
-                        executablePath,
+                        outputDir: this.outputDir,
                         compilationTimeMs: 0,
                     });
                 } else {

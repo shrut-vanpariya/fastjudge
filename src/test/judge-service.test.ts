@@ -55,7 +55,7 @@ suite('JudgeService Test Suite', () => {
             mockExecutor.setMockResult({ stdout: '42', exitCode: 0 });
             const testCase = createTestCase('1', '1 2', '42');
 
-            const result = await judge.judgeTestCase('test.exe', testCase);
+            const result = await judge.judgeTestCase('test.cpp', '.out', testCase);
 
             assert.strictEqual(result.verdict, 'AC');
         });
@@ -64,7 +64,7 @@ suite('JudgeService Test Suite', () => {
             mockExecutor.setMockResult({ stdout: '41', exitCode: 0 });
             const testCase = createTestCase('1', '1 2', '42');
 
-            const result = await judge.judgeTestCase('test.exe', testCase);
+            const result = await judge.judgeTestCase('test.cpp', '.out', testCase);
 
             assert.strictEqual(result.verdict, 'WA');
         });
@@ -73,7 +73,7 @@ suite('JudgeService Test Suite', () => {
             mockExecutor.setMockResult({ timedOut: true, stdout: '' });
             const testCase = createTestCase('1', '1 2', '42');
 
-            const result = await judge.judgeTestCase('test.exe', testCase);
+            const result = await judge.judgeTestCase('test.cpp', '.out', testCase);
 
             assert.strictEqual(result.verdict, 'TLE');
         });
@@ -82,7 +82,7 @@ suite('JudgeService Test Suite', () => {
             mockExecutor.setMockResult({ exitCode: 1, stderr: 'Error' });
             const testCase = createTestCase('1', '1 2', '42');
 
-            const result = await judge.judgeTestCase('test.exe', testCase);
+            const result = await judge.judgeTestCase('test.cpp', '.out', testCase);
 
             assert.strictEqual(result.verdict, 'RE');
         });
@@ -91,7 +91,7 @@ suite('JudgeService Test Suite', () => {
             mockExecutor.setMockResult({ exitCode: 139 });
             const testCase = createTestCase('1', '1 2', '42');
 
-            const result = await judge.judgeTestCase('test.exe', testCase);
+            const result = await judge.judgeTestCase('test.cpp', '.out', testCase);
 
             assert.strictEqual(result.verdict, 'RE');
             assert.strictEqual(result.exitCode, 139);
@@ -105,7 +105,7 @@ suite('JudgeService Test Suite', () => {
             mockExecutor.setMockResult({ stdout: '42 ', exitCode: 0 });
             const testCase = createTestCase('1', '', '42');
 
-            const result = await judge.judgeTestCase('test.exe', testCase);
+            const result = await judge.judgeTestCase('test.cpp', '.out', testCase);
 
             assert.strictEqual(result.verdict, 'WA'); // Trailing space matters
         });
@@ -115,7 +115,7 @@ suite('JudgeService Test Suite', () => {
             mockExecutor.setMockResult({ stdout: '42  \n', exitCode: 0 });
             const testCase = createTestCase('1', '', '42');
 
-            const result = await judge.judgeTestCase('test.exe', testCase);
+            const result = await judge.judgeTestCase('test.cpp', '.out', testCase);
 
             assert.strictEqual(result.verdict, 'AC');
         });
@@ -125,7 +125,7 @@ suite('JudgeService Test Suite', () => {
             mockExecutor.setMockResult({ stdout: 'hello\nworld\n\n', exitCode: 0 });
             const testCase = createTestCase('1', '', 'hello\nworld');
 
-            const result = await judge.judgeTestCase('test.exe', testCase);
+            const result = await judge.judgeTestCase('test.cpp', '.out', testCase);
 
             assert.strictEqual(result.verdict, 'AC');
         });
@@ -135,7 +135,7 @@ suite('JudgeService Test Suite', () => {
             mockExecutor.setMockResult({ stdout: '1   2\n  3', exitCode: 0 });
             const testCase = createTestCase('1', '', '1 2 3');
 
-            const result = await judge.judgeTestCase('test.exe', testCase);
+            const result = await judge.judgeTestCase('test.cpp', '.out', testCase);
 
             assert.strictEqual(result.verdict, 'AC');
         });
@@ -147,7 +147,7 @@ suite('JudgeService Test Suite', () => {
             mockExecutor.setMockResult({ stdout: '42', exitCode: 0, executionTimeMs: 150 });
             const testCase = createTestCase('1', '', '42');
 
-            const result = await judge.judgeTestCase('test.exe', testCase);
+            const result = await judge.judgeTestCase('test.cpp', '.out', testCase);
 
             assert.strictEqual(result.executionTimeMs, 150);
         });
@@ -156,7 +156,7 @@ suite('JudgeService Test Suite', () => {
             mockExecutor.setMockResult({ stdout: '41', exitCode: 0 });
             const testCase = createTestCase('1', '', '42');
 
-            const result = await judge.judgeTestCase('test.exe', testCase);
+            const result = await judge.judgeTestCase('test.cpp', '.out', testCase);
 
             assert.strictEqual(result.actualOutput, '41');
             assert.strictEqual(result.expectedOutput, '42');
@@ -166,7 +166,7 @@ suite('JudgeService Test Suite', () => {
             mockExecutor.setMockResult({ stdout: '42', exitCode: 0 });
             const testCase = createTestCase('abc123', '', '42');
 
-            const result = await judge.judgeTestCase('test.exe', testCase);
+            const result = await judge.judgeTestCase('test.cpp', '.out', testCase);
 
             assert.strictEqual(result.testCaseId, 'abc123');
         });
@@ -179,7 +179,7 @@ suite('JudgeService Test Suite', () => {
             mockExecutor.setMockResult({ stdout: 'line1\nline2\nline3', exitCode: 0 });
             const testCase = createTestCase('1', '', 'line1\nline2\nline3');
 
-            const result = await judge.judgeTestCase('test.exe', testCase);
+            const result = await judge.judgeTestCase('test.cpp', '.out', testCase);
 
             assert.strictEqual(result.verdict, 'AC');
         });
@@ -188,7 +188,7 @@ suite('JudgeService Test Suite', () => {
             mockExecutor.setMockResult({ stdout: 'line1\nwrong\nline3', exitCode: 0 });
             const testCase = createTestCase('1', '', 'line1\nline2\nline3');
 
-            const result = await judge.judgeTestCase('test.exe', testCase);
+            const result = await judge.judgeTestCase('test.cpp', '.out', testCase);
 
             assert.strictEqual(result.verdict, 'WA');
         });

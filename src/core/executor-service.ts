@@ -7,52 +7,53 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { spawn, ChildProcess } from 'child_process';
 import { performance } from 'perf_hooks';
-import { ExecutionResult, Language } from '../types';
-import { LanguageService, languageService } from './language-service';
+import { ExecutionResult } from '../types';
+import { languageRegistry } from './language-registry';
 
 /** Default time limit in milliseconds */
 const DEFAULT_TIME_LIMIT_MS = 2000;
 
 export class ExecutorService {
     private timeLimitMs: number;
-    private langService: LanguageService;
 
-    constructor(timeLimitMs?: number, langService?: LanguageService) {
+    constructor(timeLimitMs?: number) {
         this.timeLimitMs = timeLimitMs || DEFAULT_TIME_LIMIT_MS;
-        this.langService = langService || languageService;
     }
 
     /**
      * Execute program with input string and capture output
      */
     async execute(
-        executablePath: string,
+        sourcePath: string,
+        outputDir: string,
         input: string,
-        language?: Language,
+        language?: string,
         signal?: AbortSignal
     ): Promise<ExecutionResult> {
-        return this.runProcess(executablePath, input, language, signal);
+        return this.runProcess(sourcePath, outputDir, input, language, signal);
     }
 
     /**
      * Execute program with input from file (streaming for large inputs)
      */
     async executeWithFile(
-        executablePath: string,
+        sourcePath: string,
+        outputDir: string,
         inputPath: string,
-        language?: Language,
+        language?: string,
         signal?: AbortSignal
     ): Promise<ExecutionResult> {
-        return this.runProcessWithStream(executablePath, inputPath, language, signal);
+        return this.runProcessWithStream(sourcePath, outputDir, inputPath, language, signal);
     }
 
     /**
      * Run the process with streaming input from file
      */
     private runProcessWithStream(
-        executablePath: string,
+        sourcePath: string,
+        outputDir: string,
         inputPath: string,
-        language?: Language,
+        language?: string,
         signal?: AbortSignal
     ): Promise<ExecutionResult> {
         return new Promise((resolve) => {
@@ -77,10 +78,10 @@ export class ExecutorService {
             let exitSignal: NodeJS.Signals | null = null;
 
             // Build command based on language
-            const { command, args } = this.buildCommand(executablePath, language);
+            const { command, args } = this.buildCommand(sourcePath, outputDir, language);
 
             const proc = spawn(command, args, {
-                cwd: path.dirname(executablePath),
+                cwd: path.dirname(sourcePath),
                 shell: false,
                 stdio: ['pipe', 'pipe', 'pipe'],
                 timeout: this.timeLimitMs,
@@ -161,9 +162,10 @@ export class ExecutorService {
      * Run the process with time limit enforcement
      */
     private runProcess(
-        executablePath: string,
+        sourcePath: string,
+        outputDir: string,
         input: string,
-        language?: Language,
+        language?: string,
         signal?: AbortSignal
     ): Promise<ExecutionResult> {
         return new Promise((resolve) => {
@@ -188,10 +190,10 @@ export class ExecutorService {
             let exitSignal: NodeJS.Signals | null = null;
 
             // Build command based on language
-            const { command, args } = this.buildCommand(executablePath, language);
+            const { command, args } = this.buildCommand(sourcePath, outputDir, language);
 
             const proc = spawn(command, args, {
-                cwd: path.dirname(executablePath),
+                cwd: path.dirname(sourcePath),
                 shell: false,
                 stdio: ['pipe', 'pipe', 'pipe'],
                 timeout: this.timeLimitMs,
@@ -266,41 +268,21 @@ export class ExecutorService {
         });
     }
 
-    /**
-     * Build command and arguments based on executable and language
-     */
     private buildCommand(
-        executablePath: string,
-        language?: Language
+        sourcePath: string,
+        outputDir: string,
+        language?: string
     ): { command: string; args: string[] } {
         // If no language provided, try to detect from extension
-        if (!language) {
-            const ext = path.extname(executablePath).toLowerCase();
-            if (ext === '.py') {
-                language = 'python';
-            } else if (ext === '.js') {
-                language = 'javascript';
-            }
+        const provider = language ? languageRegistry.getProvider(language) : languageRegistry.detectProvider(sourcePath);
+
+        if (provider) {
+            return provider.getRunCommand(sourcePath, outputDir);
         }
 
-        // For interpreted languages, use the interpreter
-        if (language === 'python') {
-            return {
-                command: 'python',
-                args: [executablePath],
-            };
-        }
-
-        if (language === 'javascript') {
-            return {
-                command: 'node',
-                args: [executablePath],
-            };
-        }
-
-        // For compiled executables, run directly
+        // Fallback for executable without extension
         return {
-            command: executablePath,
+            command: sourcePath,
             args: [],
         };
     }
@@ -312,7 +294,7 @@ export class ExecutorService {
         try {
             if (process.platform === 'win32') {
                 // On Windows, use taskkill to kill process tree
-                spawn('taskkill', ['/pid', String(proc.pid), '/f', '/t'], { shell: true });
+                spawn('taskkill', ['/pid', String(proc.pid), '/f', '/t'], { shell: false });
             } else {
                 // On Unix, kill process group
                 process.kill(-proc.pid!, 'SIGKILL');

@@ -3,7 +3,7 @@
  * Re-exports all core services for easy importing
  */
 
-export { LanguageService, languageService } from './language-service';
+export { languageRegistry, CustomLanguageProvider } from './language-registry';
 export { CompilerService, MemoryCache } from './compiler-service';
 export { ExecutorService, executorService } from './executor-service';
 export { JudgeService } from './judge-service';

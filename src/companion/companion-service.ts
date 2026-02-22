@@ -9,14 +9,7 @@ import * as fs from 'fs/promises';
 import { CompanionProblem } from '../types/companion';
 import { TestCaseManager } from '../storage/testcase-manager';
 import { getCompanionDefaultLanguage } from '../config/settings';
-
-/** Language to file extension mapping */
-const LANGUAGE_EXTENSIONS: Record<string, string> = {
-    'C++': 'cpp',
-    'Python': 'py',
-    'Java': 'java',
-    'JavaScript': 'js',
-};
+import { languageRegistry } from '../core/language-registry';
 
 export type OnTestCasesAddedCallback = (filePath: string) => void;
 
@@ -103,25 +96,39 @@ export class CompanionService {
         // Check for default language setting
         const defaultLanguage = getCompanionDefaultLanguage();
 
-        let extension: string;
+        let extension: string | undefined;
+        const providers = languageRegistry.getAllProviders();
 
-        if (defaultLanguage && LANGUAGE_EXTENSIONS[defaultLanguage]) {
-            extension = LANGUAGE_EXTENSIONS[defaultLanguage];
-        } else {
+        if (providers.length === 0) {
+            vscode.window.showErrorMessage('No languages configured in FastJudge settings.');
+            return null;
+        }
+
+        if (defaultLanguage) {
+            const provider = providers.find(p => p.name === defaultLanguage || p.id === defaultLanguage);
+            if (provider && provider.extensions.length > 0) {
+                extension = provider.extensions[0].replace('.', '');
+            }
+        }
+
+        if (!extension) {
             // Show language picker
-            const selected = await vscode.window.showQuickPick(
-                Object.keys(LANGUAGE_EXTENSIONS),
-                {
-                    placeHolder: 'Select language for the new file',
-                }
-            );
+            const items = providers.map(p => ({
+                label: p.name,
+                description: p.extensions.join(', '),
+                provider: p
+            }));
+
+            const selected = await vscode.window.showQuickPick(items, {
+                placeHolder: 'Select language for the new file',
+            });
 
             if (!selected) {
                 vscode.window.showInformationMessage('File creation cancelled.');
                 return null;
             }
 
-            extension = LANGUAGE_EXTENSIONS[selected];
+            extension = selected.provider.extensions[0].replace('.', '');
         }
 
         // Generate filename from problem name

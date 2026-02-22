@@ -9,7 +9,8 @@ import { TestCaseManager } from '../../storage/testcase-manager';
 import { JudgeService } from '../../core/judge-service';
 import { JudgeResult, TestCaseWithData, Verdict } from '../../types';
 import { setDiffContent, createDiffUri } from './diff-provider';
-import { getTimeLimitMs, getComparisonMode, getExecutionMode, detectLanguage, getSupportedExtensions } from '../../config/settings';
+import { getTimeLimitMs, getComparisonMode, getExecutionMode } from '../../config/settings';
+import { languageRegistry } from '../../core/language-registry';
 
 export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'fastjudge.panel';
@@ -275,6 +276,10 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
         // Get execution mode from settings
         const executionMode = getExecutionMode();
 
+        // Detect language once for all test cases
+        const provider = languageRegistry.detectProvider(filePath);
+        const language = provider?.id;
+
         const results: JudgeResult[] = [];
 
         if (executionMode === 'sequential') {
@@ -291,9 +296,10 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
           // Parallel execution with live updates
           const promises = testCases.map(async (tc) => {
             const result = await this._judgeService.judgeTestCase(
-              compileResult.executablePath!,
+              filePath,
+              compileResult.outputDir!,
               tc,
-              undefined,
+              language,
               signal
             );
             this._results.set(result.testCaseId, result);
@@ -308,9 +314,10 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
           // Sequential-live (default) - run one at a time with live updates
           for (const tc of testCases) {
             const result = await this._judgeService.judgeTestCase(
-              compileResult.executablePath!,
+              filePath,
+              compileResult.outputDir!,
               tc,
-              undefined,
+              language,
               signal
             );
 
@@ -384,8 +391,9 @@ export class FastJudgeViewProvider implements vscode.WebviewViewProvider {
     const filePath = activeEditor.document.uri.fsPath;
 
     // Validate file extension
-    if (!detectLanguage(filePath)) {
-      const extensions = getSupportedExtensions()
+    if (!languageRegistry.detectProvider(filePath)) {
+      const extensions = languageRegistry.getAllProviders()
+        .flatMap(p => p.extensions)
         .map(ext => ext.replace('.', ''))
         .join(', ');
       vscode.window.showErrorMessage(`Unsupported file extension. Only these types are valid: ${extensions}`);

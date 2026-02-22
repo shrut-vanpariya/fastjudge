@@ -12,14 +12,13 @@ import {
 } from '../types';
 import { CompilerService } from './compiler-service';
 import { ExecutorService, executorService } from './executor-service';
-import { LanguageService, languageService } from './language-service';
+import { languageRegistry } from './language-registry';
 import { ResultStorageService } from '../storage/result-storage';
 import { formatRuntimeError } from './signal-parser';
 
 export class JudgeService {
     private compiler: CompilerService;
     private executor: ExecutorService;
-    private langService: LanguageService;
     private resultStorage: ResultStorageService;
     private comparisonMode: ComparisonMode;
 
@@ -27,12 +26,10 @@ export class JudgeService {
         outputDir: string,
         workspaceRoot: string,
         comparisonMode: ComparisonMode = 'trim',
-        executor?: ExecutorService,
-        langService?: LanguageService
+        executor?: ExecutorService
     ) {
         this.compiler = new CompilerService(outputDir);
         this.executor = executor || executorService;
-        this.langService = langService || languageService;
         this.resultStorage = new ResultStorageService(workspaceRoot);
         this.comparisonMode = comparisonMode;
     }
@@ -87,14 +84,16 @@ export class JudgeService {
         }
 
         // Determine language for executor
-        const language = this.langService.detectLanguage(sourcePath);
+        const provider = languageRegistry.detectProvider(sourcePath);
+        const language = provider?.id;
 
         // Run each test case
         for (const testCase of testCases) {
             const result = await this.judgeTestCase(
-                compileResult.executablePath!,
+                sourcePath,
+                compileResult.outputDir!,
                 testCase,
-                language || undefined,
+                language,
                 signal
             );
             results.push(result);
@@ -107,7 +106,8 @@ export class JudgeService {
      * Judge a single test case
      */
     async judgeTestCase(
-        executablePath: string,
+        sourcePath: string,
+        outputDir: string,
         testCase: TestCaseWithData,
         language?: string,
         signal?: AbortSignal
@@ -118,9 +118,10 @@ export class JudgeService {
 
             // Execute
             const execResult = await this.executor.execute(
-                executablePath,
+                sourcePath,
+                outputDir,
                 testCase.input,
-                language as any,
+                language,
                 signal
             );
 

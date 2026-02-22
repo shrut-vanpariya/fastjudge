@@ -9,6 +9,7 @@ import { DiffContentProvider, DIFF_SCHEME } from './ui/webview/diff-provider';
 import { CompanionManager } from './companion/companion-manager';
 import { TestCaseManager } from './storage/testcase-manager';
 import { JudgeService } from './core/judge-service';
+import { languageRegistry } from './core/language-registry';
 
 let panelProvider: FastJudgeViewProvider | undefined;
 let companionManager: CompanionManager | undefined;
@@ -25,6 +26,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		return;
 	}
 
+	// Load language configuration
+	languageRegistry.loadFromConfiguration();
+
 	// Register virtual document provider for diff view
 	const diffProvider = new DiffContentProvider();
 	context.subscriptions.push(
@@ -34,23 +38,23 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Initialize TestCaseManager
 	testCaseManager = new TestCaseManager(workspaceRoot);
 	await testCaseManager.initialize();
-	
+
 	// Initialize Judge Service
 	const outputDir = path.join(workspaceRoot, '.fastjudge', 'out');
 	judgeService = new JudgeService(outputDir, workspaceRoot);
 	await judgeService.initialize();
-	
+
 	// Create and register the webview provider
 	// Pass the shared instances
 	panelProvider = new FastJudgeViewProvider(context.extensionUri, testCaseManager!, judgeService!);
-	
+
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(
 			FastJudgeViewProvider.viewType,
 			panelProvider
 		)
 	);
-	
+
 	// Competitive Companion Integration
 	companionManager = new CompanionManager(testCaseManager!);
 
@@ -117,6 +121,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		vscode.workspace.onDidChangeConfiguration(async (e) => {
 			if (e.affectsConfiguration('fastjudge.companion')) {
 				await companionManager?.restart();
+			}
+			if (e.affectsConfiguration('fastjudge.languages')) {
+				languageRegistry.loadFromConfiguration();
 			}
 		})
 	);

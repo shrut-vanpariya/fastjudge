@@ -9,8 +9,8 @@
 /** Unique identifier for test cases (UUID v4) */
 export type TestCaseId = string;
 
-/** Supported programming languages */
-export type Language = 'cpp' | 'python' | 'java' | 'javascript';
+/** Language identifier (e.g., 'cpp', 'python', 'java', 'javascript') */
+export type Language = string;
 
 /** Comparison modes for output matching */
 export type ComparisonMode = 'exact' | 'trim' | 'ignoreWhitespace';
@@ -76,7 +76,7 @@ export interface ExecutionResult {
 /** Result of compilation */
 export interface CompileResult {
     success: boolean;
-    executablePath?: string;
+    outputDir?: string;
     error?: string;
     compilationTimeMs: number;
     cached?: boolean;  // True if compilation was skipped (cache hit)
@@ -114,16 +114,33 @@ export interface JudgeResult {
 /** Language compiler/interpreter configuration */
 export interface LanguageConfig {
     name: string;
-    extension: string;
-    compile?: {
-        command: string;     // e.g., "g++"
-        args: string[];      // e.g., ["-O2", "-std=c++17"]
-        outputFlag: string;  // e.g., "-o"
-    };
-    run: {
-        command: string;     // e.g., "./a.out" or "python"
-        args: string[];      // e.g., [] or ["{source}"]
-    };
+    extensions: string[];
+    compileArgs?: string[];
+    runArgs: string[];
+    outputExtension?: string;  // e.g., '.class' for Java. Defaults to platform binary (.exe on Windows)
+}
+
+/** Interface for language providers */
+export interface ILanguageProvider {
+    /** Unique ID of the language (e.g., 'cpp') */
+    id: Language;
+
+    /** Display name (e.g., 'C++') */
+    name: string;
+
+    /** File extensions supported by this language (e.g., ['.cpp', '.cc']) */
+    extensions: string[];
+
+    /** 
+     * Get the shell command and arguments to compile the file.
+     * Returns null if the language doesn't require compilation.
+     */
+    getCompileCommand(sourcePath: string, outputDir: string): { command: string; args: string[] } | null;
+
+    /** 
+     * Get the shell command and arguments to run the file.
+     */
+    getRunCommand(sourcePath: string, outputDir: string): { command: string; args: string[] };
 }
 
 // ============================================================================
@@ -143,7 +160,8 @@ export interface StorageIndex {
 /** Cache entry for compiled files */
 export interface CacheEntry {
     contentHash: string;
-    executablePath: string;
+    outputDir: string;
+    executablePath?: string;  // Path to compiled binary, used for cache validation
     compiledAt: number;
 }
 
